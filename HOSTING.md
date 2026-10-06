@@ -1,80 +1,91 @@
-# Host Convoke on your own Cloudflare account
+# Host Convoke on Cloudflare
 
-This package is a dynamic React/Vinext application with a Cloudflare Worker API and D1 database. It is not a static HTML upload and cannot run on GitHub Pages or a basic shared static host.
+Convoke is a dynamic React/Vinext application with a Cloudflare Worker API and D1 storage. Use Node.js 22.13 or later (Node 24 recommended). It cannot run on static hosting alone.
 
-## What you need
-- Node.js 22.13+ (Node 24 recommended) and npm.
-- A Cloudflare account with Workers, D1 and Zero Trust Access enabled.
-- Your Groq API key. Use the Free plan if you want free usage; Groq controls billing and limits.
-- An Access policy allowing your email, or the specific people who should use your Groq allowance.
-
-No keys, user conversations, database files, account credentials or node_modules are in the release ZIP. Your existing Sites conversations do not automatically migrate to a new account; export any artifacts you want to keep from the current website.
-
-## 1. Install and create your database
-Extract the ZIP, open a terminal inside `convoke`, and run:
+## Install and prepare a new account
 
 ```sh
 npm ci
 npx wrangler login
 npx wrangler d1 create convoke-db
 ```
-Keep the returned database ID. Copy `hosting.example.json` to `hosting.json`. Set `name` to your desired Worker name and `database_id` to that ID. Never put your Groq key in this file.
 
-## 2. Protect the website with Cloudflare Access
-In Cloudflare Zero Trust, create a self-hosted Access application for the URL you will use, such as `convoke.YOUR-SUBDOMAIN.workers.dev` or your own domain. Add an Allow policy limited to your email (email one-time PIN is sufficient) or your approved users. Do not create a Bypass policy.
+Copy `hosting.example.json` to ignored `hosting.json`, choose your Worker name and enter the returned database ID. Do not put API keys in that file. Existing databases must not be recreated or initialized again.
 
-Set `access_team_domain` in `hosting.json` to `https://YOUR-TEAM.cloudflareaccess.com` (no trailing slash), and set `access_aud` to the Access application's audience tag. Protect the workers.dev route too if you also use a custom domain.
+## Choose public access or account sign-in
 
-The application independently verifies the signed Access token, issuer, audience and expiry. Missing/invalid authentication cannot access project data or call Groq. It does not trust a caller-supplied email header. Cloudflare Access must be configured before users can sign in.
+For a demonstration without visitor sign-in, add `"auth_mode": "public"` to `hosting.json`. Each browser receives a signed, Secure, HttpOnly cookie and owns separate projects. Clearing cookies, changing browsers, or expiration after 30 days removes access to that browser's workspace; export important artifacts. Anyone with the site URL can consume the configured provider accounts' allowance.
 
-## 3. Build and initialize storage
+For account sign-in, use `"auth_mode": "access"`. Create a Cloudflare Access application protecting the complete Worker hostname and allow only approved emails. Set `access_team_domain` to `https://YOUR-TEAM.cloudflareaccess.com` and `access_aud` to the application's audience. Convoke verifies signed tokens, issuer, audience and expiry. Never use `AUTH_MODE=sites` on a standalone Worker.
+
+## Build and initialize a new database
+
 ```sh
 npm run build:selfhost
 npx wrangler d1 execute DB --remote --config dist/server/wrangler.json --file drizzle/0000_unknown_rockslide.sql
 ```
-Run the SQL initialization only for a new empty database. Do not repeat it against an existing installation. Subsequent schema changes require reviewed migrations.
 
-## 4. Deploy and add the secret
+Run the SQL initialization only once, against an empty database. Before future schema changes, back up the existing database and use reviewed migrations.
+
+## Deploy and connect providers
+
 ```sh
 npm run deploy:selfhost
+npx wrangler secret put GEMINI_API_KEY --config dist/server/wrangler.json
 npx wrangler secret put GROQ_API_KEY --config dist/server/wrangler.json
+npx wrangler secret put NVIDIA_API_KEY --config dist/server/wrangler.json
 ```
-Paste the key only into Wrangler's hidden prompt. The app stays unable to generate until the secret is configured. Visit your URL, sign in through Access, create a project and try a small prompt. Do not set `AUTH_MODE=sites` on your own Worker: that mode belongs exclusively to the trusted Sites gateway.
 
-Every source update: run `npm ci`, `npm test`, `npm run typecheck`, `npm run build:selfhost`, then `npm run deploy:selfhost`. The build recreates the Worker config; `configure-hosting.mjs` reapplies your local settings. Runtime secrets remain in Cloudflare.
+Configure only providers you have an account for. Enter keys into the hidden Wrangler prompts; never put them into chat, browser storage, public code, or GitHub. Gemini keys come from Google AI Studio; NVIDIA requires a separate NVIDIA developer API key. NVIDIA remains inactive until its key is configured. Visitors never need their own keys. All configured providers can be used automatically; no `AI_PROVIDER` setting is needed.
+
+For public access, also configure a randomly generated secret of at least 32 characters:
+
+```sh
+npx wrangler secret put SESSION_SECRET --config dist/server/wrangler.json
+```
+
+Preserve this secret across deployments so existing visitor cookies keep working. Rotating it signs out all browser workspaces. Open your Worker URL after the provider key and session/auth configuration are ready.
+
+## Availability, progress and usage
+
+Convoke tries the task-appropriate models across connected providers. When one is busy or fails, it tries another provider after five seconds, for up to three rounds. Recent failures influence model selection; account rate-limit waits are respected before reusing a model. Invalid keys or exhausted provider quotas disable that provider for the request. Safety refusals, cancellation and ownership checks are not bypassed by fallback.
+
+The loading view displays the actual provider/model, task stage, safe error category and retry delay through a streamed response. Raw provider error payloads and secrets are not displayed. Thorough mode defaults on, remembers your browser preference, checks for missing details, and supplies your confirmed answers to generation without repeating the quiz.
+
+**Convoke has no daily AI-call cap.** Provider quotas, rate limits, credits and billing still apply. Keep provider accounts on their free plans if zero API charges are required; Convoke cannot verify or enforce provider billing plans. Adding NVIDIA does not guarantee perpetual free or unlimited service. Bounded retries, request size, project storage and execution deadlines remain for reliable operation. The generation deadline is twenty minutes and the recovery lock expires one minute later.
 
 ## Local development
-Copy `.dev.vars.example` to `.dev.vars`, add `GROQ_API_KEY`, then:
+
+Copy `.dev.vars.example` to ignored `.dev.vars` and fill the provider keys you use. Local development uses an isolated test identity; never expose the development server publicly.
+
 ```sh
 npm run build
 npx wrangler d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_unknown_rockslide.sql
 npm run dev
 ```
-Open http://localhost:5173 and use local sign-in. Local development has an isolated test identity; never expose the development server publicly. `npm run build:selfhost` selects verified Access authentication for your deployment.
 
-## Verification and operations
-- `npm test`: model orchestration, malformed output, limits, fallback, Access-token validation.
-- `npm run typecheck`: TypeScript.
-- `npm run test:integration`: local running server; creates test projects and verifies persistence, revision conflicts, export and cancellation.
-- `node scripts/test-live.mjs`: optional real Groq calls and a local test project; consumes provider allowance.
-- Cloudflare dashboard shows Worker logs. Errors intentionally exclude keys and prompt contents.
-- Back up D1 before changing schema: `npx wrangler d1 export DB --remote --config dist/server/wrangler.json --output backup.sql`. Store backups privately.
-- Groq 429 errors can reflect token-per-minute limits, not just daily requests. Follow the displayed wait; do not repeatedly retry.
-- Use Cloudflare Access policies to control who consumes your key. Groq may charge if you upgrade your account; Convoke cannot enforce Groq's billing plan.
+Initialize local storage only if it is empty. Open http://localhost:5173.
 
-## Deployment verification boundary
-The supplied source and build were tested locally and published on Sites. The independent Cloudflare configuration and JWT rejection/acceptance logic were checked, but deployment into your Cloudflare account requires your own account, database, Access application and secret. No claim is made that those account-specific steps have already been performed.
+## Updates and checks
 
-References: https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/ and https://console.groq.com/docs/rate-limits
+```sh
+npm ci
+npm test
+npm run typecheck
+npm run build:selfhost
+npm run deploy:selfhost
+```
 
-## Optional public access (no visitor sign-in or API keys)
-Set `"auth_mode": "public"` in your ignored `hosting.json`, then build with `npm run build:selfhost`. Set a random server-only `SESSION_SECRET` of at least 32 characters with `wrangler secret put SESSION_SECRET --config dist/server/wrangler.json`, and retain `GROQ_API_KEY` as a server secret. Deploy normally. Cloudflare Access is not required in this mode; an existing Access policy would still need to be removed for public entry.
+The build recreates the Worker config. `configure-hosting.mjs` reapplies your ignored settings. Provider/session secrets stay in Cloudflare and are not bundled. Do not re-run the initial database SQL when updating.
 
-Visitors receive a signed, Secure, HttpOnly cookie automatically. Each browser has separate projects; clearing cookies or switching browsers loses access to that browser's saved workspace. Export important artifacts. All visitors use the operator's Groq key, with a shared 30-call daily application allowance including retries and clarification. The key is never sent to browsers. This mode is intended for a small public demonstration, not an authenticated multi-user service.
+`npm run test:integration` requires the local server. `scripts/test-live-thorough.mjs` takes `TEST_BASE_URL` and performs real provider calls to check streamed status, the quiz, confirmed answers and persistence. It creates a disposable project and prints its ID for targeted cleanup. `scripts/test-public.mjs` similarly verifies public sessions and generation. Such tests consume provider allowance.
 
-## Google AI Studio / Gemini
-For Gemini, save `GEMINI_API_KEY` as a Worker secret, set `"ai_provider": "gemini"` in `hosting.json`, and rebuild/deploy. For local development, use `AI_PROVIDER=gemini` and `GEMINI_API_KEY` in `.dev.vars`. Groq remains unused when Gemini is selected, even if its old secret remains stored.
+Back up D1 before schema changes:
 
-The routes use Gemini 3.8 Flash for generation and 3.7 Flash for clarification, with the other as an alternative for transient failures. Google lists free-tier access for these models as of October 6, 2026; project quotas and billing status are controlled by Google. Keep the Google project on the Free tier if you require zero API charges. Listing models does not verify billing status. Free-tier data may be used by Google to improve products: https://ai.google.dev/gemini-api/docs/pricing .
+```sh
+npx wrangler d1 export DB --remote --config dist/server/wrangler.json --output backup.sql
+```
 
-Gemini transient failures retry three times on the selected model, waiting five seconds between attempts (or longer when Google supplies Retry-After). Only then do requests switch to the alternative Gemini model, with three further attempts. Every attempt counts toward the shared daily cap. Invalid credentials, malformed requests, safety blocks, and explicitly exhausted daily quotas fail without futile retries. Stop cancels the browser request; the project cancellation marker prevents further calls and saves even if the hosting runtime does not propagate disconnection immediately. The overall deadline is twenty minutes to accommodate clarification, generation and a repair in the worst case; the project lock expires one minute later.
+Store backups privately. Exported source ZIPs exclude keys, local databases, Git metadata and dependencies. Existing Sites conversations do not automatically migrate to a different Cloudflare account.
+
+References: https://ai.google.dev/gemini-api/docs/pricing , https://console.groq.com/docs/rate-limits , https://docs.api.nvidia.com/nim/reference/llm-apis , https://developers.cloudflare.com/workers/configuration/cloudflare-access/

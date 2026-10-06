@@ -4,7 +4,7 @@ declare namespace Cloudflare {
     BUCKET?: R2Bucket;
     GROQ_API_KEY?: string;
     GEMINI_API_KEY?: string;
-    AI_PROVIDER?: "groq" | "gemini";
+    NVIDIA_API_KEY?: string;
     AUTH_MODE?: "sites" | "access" | "public";
     SESSION_SECRET?: string;
     ACCESS_TEAM_DOMAIN?: string;
