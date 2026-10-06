@@ -1,0 +1,6 @@
+# Copy to .dev.vars for local AI access. Never commit .dev.vars.
+GROQ_API_KEY=
+
+# Set AI_PROVIDER=gemini to use your Google AI Studio key instead.
+AI_PROVIDER=groq
+GEMINI_API_KEY=
