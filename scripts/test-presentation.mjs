@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {normalizeMath, latestAnswerHasCanvas, estimatedProgress} from '../lib/presentation.ts';
+import {newProject} from '../lib/project.ts';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import Markdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+const math=normalizeMath(String.raw`Inline \(x^2\). Display \[\frac{1}{2}\].`);
+assert.ok(math.includes('$x^2$'));assert.ok(math.includes('$$'));
+assert.equal(normalizeMath('`\\(code\\)`'),'`\\(code\\)`');
+const rendered=renderToStaticMarkup(createElement(Markdown,{remarkPlugins:[remarkMath],rehypePlugins:[[rehypeKatex,{trust:false,throwOnError:false}]],skipHtml:true},math+'<script>alert(1)</script>'));
+assert.match(rendered,/katex/);assert.ok(!rendered.includes('<script>'));
+const project=newProject();assert.equal(latestAnswerHasCanvas(project),false);
+project.versions.push({createdAt:'one'});project.messages.push({role:'assistant',createdAt:'one'});assert.equal(latestAnswerHasCanvas(project),true);
+project.messages.push({role:'assistant',createdAt:'two'});assert.equal(latestAnswerHasCanvas(project),false);
+let previous=0;for(const elapsed of [0,1000,10000,60000,600000,1200000]){const value=estimatedProgress(elapsed);assert.ok(value>=previous&&value<=90);previous=value;}
+console.log('PASS: math rendering, code preservation, HTML safety, text-only canvas, and estimated progress.');

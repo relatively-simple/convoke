@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {generateKeyPair,SignJWT} from 'jose';
+import {verifyAccessIdentity,accessIdentity} from '../lib/access-auth.ts';
+const {privateKey,publicKey}=await generateKeyPair('RS256');
+const issuer='https://test.cloudflareaccess.com';
+const token=await new SignJWT({email:'test@example.com'}).setProtectedHeader({alg:'RS256'}).setSubject('user1').setIssuer(issuer).setAudience('app1').setIssuedAt().setExpirationTime('1h').sign(privateKey);
+assert.equal((await verifyAccessIdentity(token,publicKey,issuer,'app1')).userId,'access:user1');
+assert.equal(await verifyAccessIdentity(token,publicKey,issuer,'wrong'),null);
+assert.equal(await verifyAccessIdentity(token,publicKey,'https://wrong.cloudflareaccess.com','app1'),null);
+assert.equal(await verifyAccessIdentity(token+'x',publicKey,issuer,'app1'),null);
+const expired=await new SignJWT({email:'test@example.com'}).setProtectedHeader({alg:'RS256'}).setSubject('user1').setIssuer(issuer).setAudience('app1').setIssuedAt().setExpirationTime(1).sign(privateKey);
+assert.equal(await verifyAccessIdentity(expired,publicKey,issuer,'app1'),null);
+assert.equal(await accessIdentity(null,issuer,'app1'),null);
+console.log('PASS: valid Access identity, signature, audience, issuer, expiry and missing token.');

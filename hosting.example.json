@@ -1,0 +1,6 @@
+{
+  "name": "convoke",
+  "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+  "access_team_domain": "https://YOUR-TEAM.cloudflareaccess.com",
+  "access_aud": "REPLACE_WITH_ACCESS_APPLICATION_AUDIENCE"
+}

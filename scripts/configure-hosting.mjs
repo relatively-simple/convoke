@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+const settings=JSON.parse(fs.readFileSync(process.argv[2] || 'hosting.json','utf8'));
+if(!/^[a-z0-9-]+$/.test(settings.name)||!/^[0-9a-f-]{36}$/.test(settings.database_id)||(settings.auth_mode !== "public" && (!/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(settings.access_team_domain)||!settings.access_aud||/REPLACE/.test(settings.access_aud))))throw Error('Fill in hosting.json using hosting.example.json first.');
+const config=JSON.parse(fs.readFileSync(process.argv[3] || 'dist/server/wrangler.json','utf8'));
+config.name=settings.name;config.topLevelName=settings.name;
+config.d1_databases=[{binding:'DB',database_name:settings.name+'-db',database_id:settings.database_id}];
+config.vars=settings.auth_mode === 'public' ? {AUTH_MODE:'public'} : {AUTH_MODE:'access',ACCESS_TEAM_DOMAIN:settings.access_team_domain,ACCESS_AUD:settings.access_aud};
+config.workers_dev=true;
+fs.writeFileSync(process.argv[3] || 'dist/server/wrangler.json',JSON.stringify(config,null,2));
+console.log(`Prepared standalone Cloudflare deployment: ${config.vars.AUTH_MODE}.`);

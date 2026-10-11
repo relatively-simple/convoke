@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {generationStream,readGeneration} from '../lib/generation-stream.ts';
+const events=[];const project={id:'test',title:'Saved result'};
+const request=new Request('https://example.com/api/generate',{method:'POST',body:'{}'});
+const response=generationStream(request,async(req,progress)=>{assert.equal(await req.text(),'{}');progress({phase:'attempt',provider:'Groq',model:'test',task:'coding',attempt:1,message:'Working'});return Response.json({project})});
+assert.deepEqual(await readGeneration(response,e=>events.push(e)),project);assert.equal(events[0].model,'test');
+const bad=generationStream(new Request('https://example.com'),async()=>Response.json({error:'Quota exhausted'},{status:429}));await assert.rejects(readGeneration(bad,()=>{}),/Quota exhausted/);
+const encoder=new TextEncoder();const serialized=JSON.stringify({type:'result',project:{...project,title:'Café'}})+'\n';const bytes=encoder.encode(serialized);
+const chunks=new ReadableStream({start(c){for(const byte of bytes)c.enqueue(new Uint8Array([byte]));c.close()}});
+assert.equal((await readGeneration(new Response(chunks,{headers:{'Content-Type':'application/x-ndjson'}}),()=>{})).title,'Café');
+await assert.rejects(readGeneration(new Response('{"type":"heartbeat"}\n',{headers:{'Content-Type':'application/x-ndjson'}}),()=>{}),/closed before completion/);
+console.log('PASS: progress before completion, result/error propagation, split UTF-8 events, and disconnected stream handling.');

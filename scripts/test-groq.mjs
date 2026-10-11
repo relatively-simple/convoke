@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {completeGroq,groqModels} from '../lib/groq.ts';
+const valid={reply:'Ready',artifact:null};let calls=0,reserved=0;
+const result=await completeGroq('fixture',[],'coding',new AbortController().signal,async(url,options)=>{assert.equal(url,'https://api.groq.com/openai/v1/chat/completions');const body=JSON.parse(options.body);assert.equal(body.response_format.type,'json_object');calls++;if(calls===1)return {json:async()=>{throw new DOMException('Timeout','TimeoutError')}};return Response.json({choices:[{message:{content:JSON.stringify(valid)}}]});},async()=>{reserved++});
+assert.equal(calls,2);assert.equal(reserved,2);assert.equal(result.model,groqModels('coding')[1]);
+calls=0;await assert.rejects(completeGroq('fixture',[],'explain',new AbortController().signal,async()=>{calls++;return Response.json({error:{message:'bad key'}},{status:401})}),/rejected the API key/);assert.equal(calls,1);
+await assert.rejects(completeGroq('fixture',[],'explain',new AbortController().signal,async()=>Response.json({error:{message:'rate limited'}},{status:429,headers:{'retry-after':'12'}})),/12 seconds/);
+await assert.rejects(completeGroq('fixture',[],'explain',new AbortController().signal,async()=>Response.json({choices:[{finish_reason:'length'}]})),/output limit/);
+await assert.rejects(completeGroq('fixture',[],'explain',new AbortController().signal,async()=>Response.json({choices:[{message:{content:'{}'}}]})),/incomplete response/);
+console.log('PASS: Groq routes, body timeouts, fallback, per-attempt accounting, authentication, rate limits, truncated and malformed responses.');
