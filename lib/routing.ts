@@ -1,6 +1,6 @@
 import type { Mode } from "./project.ts";
 
-export type Task = "coding" | "reasoning" | "explain" | "clarify" | "repair" | "summary";
+export type Task = "coding" | "reasoning" | "explain" | "clarify" | "repair" | "summary" | "fact-check" | "second-opinion" | "boardroom-draft" | "boardroom-review" | "boardroom-synthesis";
 export type CatalogModel = { id: string; name?: string; description?: string; context_length?: number; architecture?: { input_modalities?: string[]; output_modalities?: string[] }; pricing?: Record<string, unknown>; supported_parameters?: string[]; top_provider?: { max_completion_tokens?: number | null }; benchmarks?: { artificial_analysis?: { coding_index?: number | null; intelligence_index?: number | null } } };
 export type Route = { task: Task; model: string; reason: string };
 export const FREE_PROVIDER = { max_price: { prompt: 0, completion: 0, request: 0, image: 0 }, allow_fallbacks: true };
@@ -14,21 +14,22 @@ export function isFree(model: CatalogModel) {
 export function taskFor(mode: Mode, prompt: string): Task {
   if (mode === "build") return "coding";
   if (mode === "explain") return "explain";
-  if (/\b(code|coding|build|debug|fix|html|javascript|app|website|calculator|timer)\b/i.test(prompt)) return "coding";
+  if (/\b(code|coding|build|debug|fix|html|javascript|app|website|calculator|timer|visual|visualize|visualization|visuals|diagram|chart|graph|plot|animation|simulate|simulation|interactive|canvas)\b/i.test(prompt)) return "coding";
   if (/\b(prove|proof|logic|reason|solve|equation|calculate|math)\b/i.test(prompt)) return "reasoning";
   return "explain";
 }
-export function selectRoute(catalog: CatalogModel[], task: Task, requiredContext: number): Route {
+export function selectRoute(catalog: CatalogModel[], task: Task, requiredContext: number, smartRouting = true): Route {
   // These endpoints explicitly reject ordinary chat/workspace clients (HTTP 403).
   const restricted = new Set(["thinkingmachines/inkling-small:free", "thinkingmachines/inkling:free"]);
   const available = catalog.filter(m => isFree(m) && !restricted.has(m.id) && (m.context_length || 0) >= requiredContext && (!m.top_provider?.max_completion_tokens || m.top_provider.max_completion_tokens >= 5000));
   const quality = (m: CatalogModel) => {
-    if (task === "clarify") return -1;
+    if (!smartRouting || task === "clarify") return -1;
     const metrics = m.benchmarks?.artificial_analysis;
     const value = task === "coding" || task === "repair" ? metrics?.coding_index : metrics?.intelligence_index;
     return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : -1;
   };
   const score = (m: CatalogModel) => {
+    if (!smartRouting) return 0;
     const label = `${m.id} ${m.name || ""} ${m.description || ""}`;
     let n = m.supported_parameters?.includes("response_format") ? 4 : 0;
     if (task === "coding" || task === "repair") n += /coding|coder|code generation|software/i.test(label) ? 12 : 0;
@@ -40,5 +41,8 @@ export function selectRoute(catalog: CatalogModel[], task: Task, requiredContext
   available.sort((a,b) => quality(b)-quality(a) || score(b)-score(a) || a.id.localeCompare(b.id));
   if (!available.length) throw new Error("No eligible free model is available for this task and context. Try again later or shorten the project brief.");
   const metric = task === "coding" || task === "repair" ? "coding index" : "intelligence index";
-  return { task, model: available[0].id, reason: quality(available[0]) >= 0 ? `Highest catalog-reported ${metric} (${quality(available[0])}) among eligible free models with published scores. This is a quality proxy, not a guarantee for this task.` : `Free-only ${task} selection based on task keywords and context capacity. No comparable benchmark score was available.` };
+  const reason = smartRouting
+    ? (quality(available[0]) >= 0 ? `Highest catalog-reported ${metric} (${quality(available[0])}) among eligible free models with published scores. This is a quality proxy, not a guarantee for this task.` : `Free-only ${task} selection based on task keywords and context capacity. No comparable benchmark score was available.`)
+    : `Standard sequential model order (Smart routing switched off). Will fall back between models until one works.`;
+  return { task, model: available[0].id, reason };
 }

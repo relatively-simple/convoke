@@ -1,5 +1,4 @@
 import { owner, getProject, HttpError, errorResponse } from "@/lib/server";
-import { previewDocument } from "@/lib/project";
 import { z } from "zod";
 import { env } from "cloudflare:workers";
 import { exportDocument } from "@/lib/export-document";

@@ -3,6 +3,7 @@ import { runtimeDocument } from "./runtime-document.ts";
 export type RuntimeReport={issues:string[];output?:string;testsPassed?:number};
 let three:Promise<string>|undefined;
 let math:Promise<[string,string]>|undefined;
+let pyodideSrc:Promise<string>|undefined;
 export async function documentForArtifact(artifact:Artifact,token:string){
   let library="";
   if(artifact.libraries?.includes("three")){
@@ -15,7 +16,15 @@ export async function documentForArtifact(artifact:Artifact,token:string){
     [mathSource,mathCSS]=await math;
     mathCSS=mathCSS.replace(/url\(fonts\//g,`url(${location.origin}/runtime/fonts/`);
   }
-  return runtimeDocument(artifact,token,location.origin,library,mathSource,mathCSS);
+  // For Python artifacts, fetch pyodide.js source once and inline it into the
+  // worker blob. Blob worker content is parsed as a native JS program — no eval
+  // is needed — so this approach works within the existing CSP without unsafe-eval.
+  let pyodideSource="";
+  if(artifact.python){
+    pyodideSrc??=fetch('/runtime/pyodide.js').then(r=>{if(!r.ok)throw Error('Could not load Python runtime');return r.text();}).catch(e=>{pyodideSrc=undefined;throw e;});
+    pyodideSource=await pyodideSrc;
+  }
+  return runtimeDocument(artifact,token,location.origin,library,mathSource,mathCSS,pyodideSource);
 }
 export async function testArtifact(artifact:Artifact,signal:AbortSignal):Promise<RuntimeReport>{
   const token=crypto.randomUUID();
@@ -24,8 +33,8 @@ export async function testArtifact(artifact:Artifact,signal:AbortSignal):Promise
   return new Promise((resolve,reject)=>{
     const frame=document.createElement('iframe');frame.sandbox.add('allow-scripts');frame.title='Checking generated result';frame.setAttribute('aria-hidden','true');
     frame.style.cssText='position:fixed;left:-10000px;top:0;width:1000px;height:700px;border:0;pointer-events:none';
-    let timer:ReturnType<typeof setTimeout>;
-    const cleanup=()=>{clearTimeout(timer);window.removeEventListener('message',receive);signal.removeEventListener('abort',abort);frame.remove();};
+    let timer: ReturnType<typeof setTimeout> | undefined = undefined;
+    const cleanup=()=>{if(timer)clearTimeout(timer);window.removeEventListener('message',receive);signal.removeEventListener('abort',abort);frame.remove();};
     const abort=()=>{cleanup();reject(new DOMException('Stopped','AbortError'));};
     const receive=(event:MessageEvent)=>{
       const data=event.data;

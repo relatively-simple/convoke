@@ -1,6 +1,9 @@
 import { type ChatMessage, type Completion, parseJson, plannerSchema } from "./free-ai.ts";
 import { summarySchema } from "./shared-state.ts";
 import { resultSchema } from "./project.ts";
+import { factCheckResponseSchema } from "./fact-check.ts";
+import { secondOpinionResponseSchema } from "./second-opinion.ts";
+import { boardroomDraftResponseSchema, boardroomCritiqueResponseSchema, boardroomSynthesisResponseSchema } from "./boardroom.ts";
 import type { Task } from "./routing.ts";
 import { HttpError } from "./errors.ts";
 import { waitForRetry } from "./retry.ts";
@@ -9,10 +12,15 @@ import type { ProgressSink } from "./ai-progress.ts";
 export type Provider = "gemini" | "groq" | "nvidia";
 export type ProviderKeys = Partial<Record<Provider, string>>;
 const names: Record<Provider, string> = { gemini: "Google Gemini", groq: "Groq", nvidia: "NVIDIA" };
-export function providerModels(provider: Provider, task: Task) {
-  if (provider === "gemini") return ["gemini-3.7-flash", "gemini-3.8-flash"];
+export function providerModels(provider: Provider, task: Task, smartRouting = true) {
+  if (!smartRouting) {
+    if (provider === "gemini") return ["gemini-3.8-flash", "gemini-3.7-flash"];
+    if (provider === "nvidia") return ["deepseek-ai/deepseek-v4.1-flash", "openai/gpt-oss-20b"];
+    return ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
+  }
+  if (provider === "gemini") return ["gemini-3.8-flash", "gemini-3.7-flash"];
   if (provider === "nvidia") return (task === "clarify" || task === "summary") ? ["openai/gpt-oss-20b", "deepseek-ai/deepseek-v4.1-flash"] : ["deepseek-ai/deepseek-v4.1-flash", "openai/gpt-oss-20b"];
-  return (task === "clarify" || task === "summary") ? ["openai/gpt-oss-20b", "qwen/qwen3.8-27b"] : task === "coding" || task === "repair" ? ["qwen/qwen3.8-27b", "openai/gpt-oss-120b"] : ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"];
+  return (task === "clarify" || task === "summary") ? ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"] : task === "coding" || task === "repair" ? ["qwen/qwen3.8-27b", "openai/gpt-oss-120b"] : ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
 }
 export class ProviderError extends HttpError {
   kind: string; retryMs: number; disable: "provider" | "model" | null;
@@ -29,9 +37,11 @@ function normalizedMessages(messages: ChatMessage[]) {
   }
   return result;
 }
+const utf8Encoder = new TextEncoder();
+
 export async function providerAttempt(provider: Provider, key: string, model: string, messages: ChatMessage[], task: Task, signal: AbortSignal, fetcher: typeof fetch = fetch): Promise<Completion> {
-  const size = new TextEncoder().encode(JSON.stringify(messages)).length;
-  if (size > (provider === "groq" ? 24000 : 90000)) throw new ProviderError(413, "context_limit", "This model cannot fit the project context.", 5000, "provider");
+  const size = utf8Encoder.encode(JSON.stringify(messages)).length;
+  if (size > 90000) throw new ProviderError(413, "context_limit", "This model cannot fit the project context.", 5000, "model");
   const gemini = provider === "gemini";
   const url = gemini ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent` : provider === "groq" ? "https://api.groq.com/openai/v1/chat/completions" : "https://integrate.api.nvidia.com/v1/chat/completions";
   const body = gemini ? {
@@ -40,18 +50,19 @@ export async function providerAttempt(provider: Provider, key: string, model: st
     generationConfig: { responseMimeType: "application/json", maxOutputTokens: (task === "clarify" || task === "summary") ? 4096 : 16384 },
   } : {
     model, messages: normalizedMessages(messages), stream: false,
-    ...(provider === "groq" ? { response_format: { type: "json_object" }, max_completion_tokens: 4000, reasoning_effort: model.startsWith("qwen/") ? "none" : "low" } : { max_tokens: 4096, ...(model.startsWith("openai/") ? { reasoning_effort: "low" } : {}) }),
+    ...(provider === "groq"
+      ? { response_format: { type: "json_object" }, max_completion_tokens: model.startsWith("qwen/") ? 1000 : 4000, ...(model.startsWith("openai/") ? { reasoning_effort: "low" } : {}) }
+      : { max_tokens: 4096, ...(model.startsWith("openai/") ? { reasoning_effort: "low" } : {}) }),
   };
   let response: Response;
   let data: { error?: { message?: string; details?: { retryDelay?: string }[] }; promptFeedback?: { blockReason?: string }; candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] } }[]; choices?: { finish_reason?: string; message?: { content?: string } }[]; usageMetadata?: { totalTokenCount?: number }; usage?: { total_tokens?: number } };
   try {
-    response = await fetcher(url, { method: "POST", headers: gemini ? { "x-goog-api-key": key, "Content-Type": "application/json" } : { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.any([signal, AbortSignal.timeout(45000)]) });
-    // Providers sometimes return an HTML error. Preserve its HTTP category.
+    response = await fetcher(url, { method: "POST", headers: gemini ? { "x-goog-api-key": key, "Content-Type": "application/json" } : { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]) });
     const raw = await response.text();
     try { data = JSON.parse(raw); } catch { data = {}; }
   } catch {
     if (signal.aborted) throw new HttpError(409, "This request was stopped.");
-    throw new ProviderError(504, "timeout", "The model timed out or its network connection failed.");
+    throw new ProviderError(504, "timeout", "The model timed out or its network connection failed.", 5000, null);
   }
   if (!response.ok || data.error || response.status === 202) {
     if ([401, 403].includes(response.status) || (response.status === 400 && /api.key|API_KEY_INVALID/i.test(data.error?.message || ""))) throw new ProviderError(503, "authentication", "The provider rejected the site's connection.", 5000, "provider");
@@ -62,37 +73,114 @@ export async function providerAttempt(provider: Provider, key: string, model: st
       const seconds = header ? (Number.isFinite(Number(header)) ? Number(header) : (Date.parse(header) - Date.now()) / 1000) : Number(data.error?.details?.find(d => d.retryDelay)?.retryDelay?.replace(/s$/, ""));
       throw new ProviderError(429, daily ? "quota" : "rate_limit", daily ? "The provider's daily quota or credits are exhausted." : "The provider is rate-limiting requests.", Number.isFinite(seconds) && seconds > 0 ? Math.max(5000, seconds * 1000) : 5000, daily ? "provider" : null);
     }
-    if (response.status === 413) throw new ProviderError(413, "context_limit", "This model cannot fit the project context.", 5000, "provider");
-    if ([400, 422].includes(response.status)) throw new ProviderError(502, "request_rejected", "This model rejected the request format.", 5000, "model");
-    throw new ProviderError(503, "busy", "The provider is busy or temporarily unavailable.");
+    if (response.status === 413) throw new ProviderError(413, "context_limit", "This model cannot fit the project context.", 5000, "model");
+    if ([400, 422].includes(response.status)) throw new ProviderError(502, "request_rejected", "This model rejected the request format.", 5000, null);
+    throw new ProviderError(503, "busy", "The provider is busy or temporarily unavailable.", 5000, null);
   }
   const candidate = data.candidates?.[0], choice = data.choices?.[0];
   if (data.promptFeedback?.blockReason || candidate?.finishReason === "SAFETY" || choice?.finish_reason === "content_filter") throw new HttpError(422, "The AI could not answer this request. Try rephrasing it.");
-  if (candidate?.finishReason === "MAX_TOKENS" || choice?.finish_reason === "length") throw new ProviderError(502, "output_limit", "The response exceeded this model's output limit.");
+  if (candidate?.finishReason === "MAX_TOKENS" || choice?.finish_reason === "length") throw new ProviderError(502, "output_limit", "The response exceeded this model's output limit.", 5000, null);
   const content = gemini ? candidate?.content?.parts?.filter(p => !p.thought).map(p => p.text || "").join("") : choice?.message?.content;
-  try { if (!content || !(task === "summary" ? summarySchema : task === "clarify" ? plannerSchema : resultSchema).safeParse(parseJson(content)).success) throw Error("Invalid response"); }
-  catch { throw new ProviderError(502, "invalid_response", "The model returned an incomplete or invalid response."); }
-  return { content: content!, model: `${names[provider]} · ${model}`, tokens: data.usageMetadata?.totalTokenCount || data.usage?.total_tokens || 0, route: { task, model, reason: `${names[provider]} returned a valid ${task} response.` } };
+  const validator =
+    task === "summary" ? summarySchema :
+    task === "clarify" ? plannerSchema :
+    task === "fact-check" ? factCheckResponseSchema :
+    task === "second-opinion" ? secondOpinionResponseSchema :
+    task === "boardroom-draft" ? boardroomDraftResponseSchema :
+    task === "boardroom-review" ? boardroomCritiqueResponseSchema :
+    task === "boardroom-synthesis" ? boardroomSynthesisResponseSchema :
+    resultSchema;
+  let rawParsed: any;
+  try {
+    rawParsed = parseJson(content || "");
+    if (rawParsed && typeof rawParsed === "object" && rawParsed.artifact && !rawParsed.artifact.html?.trim() && !rawParsed.artifact.python?.trim()) {
+      rawParsed.artifact = null;
+    }
+    if (task === "clarify" && rawParsed && typeof rawParsed === "object" && Array.isArray(rawParsed.questions)) {
+      const qs: string[] = [];
+      const opts: string[][] = [];
+      for (let i = 0; i < Math.min(rawParsed.questions.length, 12); i++) {
+        const q = String(rawParsed.questions[i] || "").trim().slice(0, 250);
+        if (!q) continue;
+        let o = Array.isArray(rawParsed.options?.[i]) ? rawParsed.options[i].map((x: any) => String(x || "").trim().slice(0, 120)).filter(Boolean) : [];
+        if (o.length < 2) o = ["Standard / Recommended", "Alternative approach"];
+        if (o.length > 4) o = o.slice(0, 4);
+        qs.push(q);
+        opts.push(o);
+      }
+      rawParsed.questions = qs;
+      rawParsed.options = opts;
+    }
+    if (!validator.safeParse(rawParsed).success) throw Error("Invalid response");
+  } catch {
+    throw new ProviderError(502, "invalid_response", "The model returned an incomplete or invalid response.", 5000, null);
+  }
+  return { content: JSON.stringify(rawParsed), model: `${names[provider]} · ${model}`, tokens: data.usageMetadata?.totalTokenCount || data.usage?.total_tokens || 0, route: { task, model, reason: `${names[provider]} returned a valid ${task} response.` } };
 }
 
 // Health is a short-lived hint within a Worker instance, not a guarantee of availability.
 const cooldown = new Map<string, number>();
-export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, reserve: () => Promise<void>, progress: ProgressSink = () => {}, options: { fetcher?: typeof fetch; wait?: typeof waitForRetry; health?: Map<string, number> } = {}) {
-  const providers = (["gemini", "groq", "nvidia"] as Provider[]).filter(p => keys[p]);
+export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, reserve: () => Promise<void>, progress: ProgressSink = () => {}, options: { fetcher?: typeof fetch; wait?: typeof waitForRetry; health?: Map<string, number>; smartRouting?: boolean } = {}) {
+  const smartRouting = options.smartRouting !== false;
+  const providers = (Object.keys(keys) as Provider[]).filter(p => keys[p] && (["gemini", "groq", "nvidia"] as Provider[]).includes(p));
   const disabledProviders = new Set<Provider>(), disabledModels = new Set<string>();
+  const modelAttempts = new Map<string, number>();
   const health = options.health || cooldown, wait = options.wait || waitForRetry;
+  const modelsFor = (p: Provider, t: Task) => providerModels(p, t, smartRouting);
   return async (messages: ChatMessage[], task: Task): Promise<Completion> => {
     if (!providers.length) throw new HttpError(503, "No AI provider is connected.");
+    if (signal.aborted) throw new HttpError(409, "This request was stopped.");
     let attempt = 0, last: ProviderError | undefined;
-    while (providers.some(p => !disabledProviders.has(p) && providerModels(p, task).some(m => !disabledModels.has(p + ":" + m)))) {
-      if (signal.aborted) throw new HttpError(409, "This request was stopped or timed out. Your saved work is unchanged.");
-      // Try a different provider next; do not block all providers on one's Retry-After.
-      const ordered = [...providers].sort((a, b) => Math.min(...providerModels(a, task).map(m => health.get(a + ":" + m) || 0)) - Math.min(...providerModels(b, task).map(m => health.get(b + ":" + m) || 0)));
+    while (!signal.aborted) {
+      const activeProviders = providers.filter(p => !disabledProviders.has(p));
+      if (!activeProviders.length) {
+        throw new HttpError(last?.status || 503, attempt ? `The connected AI providers could not complete this request after ${attempt} attempts. ${last?.message || "Please check your connection."} Your saved work is unchanged.` : `All connected AI providers are unavailable. ${last?.message || "Please check your connection."} Your saved work is unchanged.`);
+      }
+
+      const hasUntriedModels = activeProviders.some(p =>
+        modelsFor(p, task).some(m => !disabledModels.has(p + ":" + m) && (modelAttempts.get(p + ":" + m) || 0) < 2)
+      );
+
+      // If all candidate models have had 2 attempts, reset attempts for the next round so Convoke keeps trying until an output is obtained!
+      if (!hasUntriedModels) {
+        const canRetry = activeProviders.some(p => modelsFor(p, task).some(m => !disabledModels.has(p + ":" + m)));
+        if (canRetry) {
+          for (const p of activeProviders) {
+            for (const m of modelsFor(p, task)) {
+              if (!disabledModels.has(p + ":" + m)) modelAttempts.set(p + ":" + m, 0);
+            }
+          }
+          progress({ phase: "retry", provider: "Convoke", model: "Rotating providers", task, attempt: attempt + 1, message: "Retrying across models to obtain your result…", waitSeconds: 5 });
+          try { await wait(5000, signal); } catch { throw new HttpError(409, "This request was stopped."); }
+        } else {
+          break;
+        }
+      }
+
+      const isCandidate = (p: Provider, m: string) => {
+        if (disabledModels.has(p + ":" + m)) return false;
+        const tries = modelAttempts.get(p + ":" + m) || 0;
+        return tries < 2;
+      };
+
+      const modelScore = (p: Provider, m: string) => {
+        const tries = modelAttempts.get(p + ":" + m) || 0;
+        const cool = health.get(p + ":" + m) || 0;
+        return tries * 1000000000000 + cool;
+      };
+
+      const providerScore = (p: Provider) => {
+        const candidates = modelsFor(p, task).filter(m => isCandidate(p, m));
+        if (!candidates.length) return Infinity;
+        return Math.min(...candidates.map(m => modelScore(p, m)));
+      };
+
+      const ordered = [...activeProviders].sort((a, b) => providerScore(a) - providerScore(b));
       for (const provider of ordered) {
         if (disabledProviders.has(provider)) continue;
-        const models = providerModels(provider, task).filter(m => !disabledModels.has(provider + ":" + m));
-        if (!models.length) continue;
-        const model = [...models].sort((a, b) => (health.get(provider + ":" + a) || 0) - (health.get(provider + ":" + b) || 0))[0];
+        const candidateModels = modelsFor(provider, task).filter(m => isCandidate(provider, m));
+        if (!candidateModels.length) continue;
+        const model = [...candidateModels].sort((a, b) => modelScore(provider, a) - modelScore(provider, b))[0];
         const remaining = (health.get(provider + ":" + model) || 0) - Date.now();
         if (attempt || remaining > 0) {
           const delay = Math.max(attempt ? 5000 : 0, remaining);
@@ -100,7 +188,7 @@ export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, re
           try { await wait(delay, signal); } catch { throw new HttpError(409, "This request was stopped."); }
         }
         if (signal.aborted) throw new HttpError(409, "This request was stopped.");
-        await reserve(); // Cancellation and project ownership checks must never be bypassed by fallback.
+        await reserve();
         attempt++;
         progress({ phase: "attempt", provider: names[provider], model, task, attempt, message: (task === "clarify" || task === "summary") ? "Checking your prompt for missing details" : task === "repair" ? "Repairing the generated code" : "Generating your result" });
         try {
@@ -111,13 +199,20 @@ export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, re
         } catch (error) {
           if (!(error instanceof ProviderError)) throw error;
           last = error;
+          const key = provider + ":" + model;
+          const currentTries = (modelAttempts.get(key) || 0) + 1;
+          modelAttempts.set(key, currentTries);
+
+          // Permanent disables for unrecoverable errors (auth failures, missing models, context limit)
           if (error.disable === "provider") disabledProviders.add(provider);
-          if (error.disable === "model") disabledModels.add(provider + ":" + model);
-          health.set(provider + ":" + model, Date.now() + Math.max(error.retryMs, error.kind === "timeout" ? 60000 : 5000));
-          progress({ phase: "retry", provider: names[provider], model, task, attempt, message: "Trying another available model", error: `${error.kind}: ${error.message}` });
+          if (error.disable === "model") disabledModels.add(key);
+
+          health.set(key, Date.now() + Math.max(error.retryMs, error.kind === "timeout" ? 15000 : 5000));
+          progress({ phase: "retry", provider: names[provider], model, task, attempt, message: `Switching models: ${error.message}`, error: `${error.kind}: ${error.message}` });
         }
       }
     }
+    if (signal.aborted) throw new HttpError(409, "This request was stopped.");
     throw new HttpError(last?.status || 503, `The connected AI providers could not complete this request after ${attempt} attempts. ${last?.message || "Please try again shortly."} Your saved work is unchanged.`);
   };
 }

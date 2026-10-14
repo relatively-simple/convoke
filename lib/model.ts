@@ -20,9 +20,9 @@ export async function compareModels(project:Project,prompt:string,mode:Mode,sign
   if(signal.aborted)throw new HttpError(409,"This comparison was stopped.");
   return {id:crypto.randomUUID(),prompt,results,createdAt:new Date().toISOString()};
 }
-export async function generate(project: Project, prompt: string, mode: Mode, signal: AbortSignal, thorough: boolean, reserveCall: () => Promise<void>, progress: ProgressSink = () => {}) {
+export async function generate(project: Project, prompt: string, mode: Mode, signal: AbortSignal, thorough: boolean, reserveCall: () => Promise<void>, progress: ProgressSink = () => {}, smartRouting: boolean = true) {
   const keys = { gemini: env.GEMINI_API_KEY, groq: env.GROQ_API_KEY, nvidia: env.NVIDIA_API_KEY };
   if (!Object.values(keys).some(Boolean)) throw new HttpError(503,"AI is temporarily unavailable. Please try again shortly.");
   const deadline = AbortSignal.any([signal,AbortSignal.timeout(GENERATION_TIMEOUT_MS)]);
-  return runTask(project,prompt,mode,thorough,createProviderRouter(keys,deadline,reserveCall,progress));
+  return runTask(project,prompt,mode,thorough,createProviderRouter(keys,deadline,reserveCall,progress,{ smartRouting }),smartRouting);
 }

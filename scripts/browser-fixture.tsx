@@ -2,6 +2,7 @@ import React from 'react';
 import {createRoot} from 'react-dom/client';
 import {testArtifact,documentForArtifact} from '../lib/runtime-client';
 import {Answer} from '../components/answer';
+import "katex/dist/katex.min.css";
 import {VisualAnswers} from '../components/visual-answer';
 import Workspace from '../app/workspace';
 Object.assign(window,{testArtifact,documentForArtifact});

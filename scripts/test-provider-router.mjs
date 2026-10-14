@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {createProviderRouter, providerAttempt} from '../lib/provider-router.ts';
+import {createProviderRouter, providerAttempt, providerModels} from '../lib/provider-router.ts';
 import {runTask} from '../lib/free-ai.ts';
 import {newProject} from '../lib/project.ts';
 import {HttpError} from '../lib/errors.ts';
@@ -63,3 +63,37 @@ for (const state of ['answered','followup','legacy-pending']) {
  assert.deepEqual(calls,['coding']);assert.deepEqual(output.questions,[]);
 }
 console.log('PASS: quiz answers, follow-ups, and existing pending projects bypass clarification.');
+assert.deepEqual(providerModels('groq','coding',true),['qwen/qwen3.8-27b','openai/gpt-oss-120b']);
+assert.deepEqual(providerModels('groq','coding',false),['openai/gpt-oss-120b','qwen/qwen3.8-27b','openai/gpt-oss-20b']);
+assert.deepEqual(providerModels('nvidia','clarify',true),['openai/gpt-oss-20b','deepseek-ai/deepseek-v4.1-flash']);
+assert.deepEqual(providerModels('nvidia','clarify',false),['deepseek-ai/deepseek-v4.1-flash','openai/gpt-oss-20b']);
+const disabledRoute = createProviderRouter({groq:'y'},signal,async()=>{},()=>{},{health:new Map(),smartRouting:false,wait:async()=>{},fetcher:async(url,options)=>{
+ const b=JSON.parse(options.body);
+ if (b.model === 'openai/gpt-oss-120b') return Response.json({error:{}},{status:503});
+ return ok();
+}});
+const disabledRes = await disabledRoute(messages,'coding');
+assert.match(disabledRes.model,/qwen3.8-27b/);
+console.log('PASS: smart routing toggle, sequential fallback when off, and model rotation until working.');
+
+// If a model is unavailable for 2 tries, move on to the next best model
+const modelCallCount = new Map();
+let groqFailures = 0;
+const twoTryRouter = createProviderRouter({gemini:'g',groq:'q'},signal,async()=>{},()=>{},{health:new Map(),wait:async()=>{},fetcher:async(url,options)=>{
+  const model = url.includes('googleapis') ? url.split('/').at(-1).split(':')[0] : JSON.parse(options.body).model;
+  modelCallCount.set(model, (modelCallCount.get(model) || 0) + 1);
+  if (url.includes('googleapis')) {
+    return Response.json({error:{status:'UNAVAILABLE'}},{status:503});
+  }
+  // Groq fails for 4 calls (2 models x 2 rounds) to test both Gemini models reaching 2 tries
+  if (groqFailures++ < 4) {
+    return Response.json({error:{status:'UNAVAILABLE'}},{status:503});
+  }
+  return ok();
+}});
+const twoTryResult = await twoTryRouter(messages,'explain');
+assert.match(twoTryResult.model,/Groq/);
+assert.equal(modelCallCount.get('gemini-3.8-flash'), 2);
+assert.equal(modelCallCount.get('gemini-3.7-flash'), 2);
+console.log('PASS: 2-try model failover retires failing models and advances to the next best provider.');
+

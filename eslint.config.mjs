@@ -11,6 +11,13 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "dist/**",
+    "work/**",
+    ".wrangler/**",
+    ".vinext/**",
+    ".sites-runtime/**",
+    "public/runtime/**",
+    "vendor/**",
     "next-env.d.ts",
   ]),
   {
@@ -21,6 +28,20 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-unused-vars": "off",
       "react-hooks/purity": "off",
       "react-hooks/set-state-in-effect": "off",
+    },
+  },
+  {
+    files: ["components/visual-answer.tsx"],
+    rules: {
+      // Diagrams use self-contained inline SVG data URIs to isolate SVG DOM from parent page
+      "@next/next/no-img-element": "off",
+    },
+  },
+  {
+    files: ["app/workspace.tsx"],
+    rules: {
+      // Allow standard HTML anchor link for top-level home navigation without router coupling
+      "@next/next/no-html-link-for-pages": "off",
     },
   },
 ]);

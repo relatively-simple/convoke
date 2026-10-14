@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { modeSchema, newProject, type Project } from "@/lib/project";
+import { modeSchema, newProject } from "@/lib/project";
 import { owner, db, json, errorResponse, readBody, HttpError, capabilities, getProject, commitProject, serialize, checkCapacity, decodeProject } from "@/lib/server";
 export const dynamic = "force-dynamic";
 const id = z.string().uuid();
@@ -7,6 +7,9 @@ const actions = z.discriminatedUnion("action", [
   z.object({ action: z.literal("create"), title: z.string().trim().min(1).max(100), mode: modeSchema }),
   z.object({ action: z.literal("save"), projectId: id, revision: z.number().int().nonnegative(), title: z.string().trim().min(1).max(100).optional(), brief: z.string().max(4000).optional(), html: z.string().min(1).max(45000).optional(), python:z.string().min(1).max(16000).optional(), artifactTitle: z.string().min(1).max(100).optional(), restoreId: id.optional() }),
   z.object({action:z.literal("adopt"),projectId:id,revision:z.number().int().nonnegative(),comparisonId:id,resultId:id}),
+  z.object({action:z.literal("adopt-boardroom"),projectId:id,revision:z.number().int().nonnegative(),boardroomId:id,content:z.string().min(1).max(10000),source:z.string().min(1).max(100)}),
+  z.object({action:z.literal("apply-correction"),projectId:id,revision:z.number().int().nonnegative(),messageId:id,correction:z.string().min(1).max(10000)}),
+  z.object({action:z.literal("apply-second-opinion"),projectId:id,revision:z.number().int().nonnegative(),messageId:id,revisionText:z.string().min(1).max(10000)}),
   z.object({ action:z.literal("runtime"),projectId:id,revision:z.number().int().nonnegative(),versionId:id,issues:z.array(z.string().max(1600)).max(8),output:z.string().max(12000).optional(),testsPassed:z.number().optional() }),
   z.object({ action: z.literal("cancel"), projectId: id, runId: id }),
 ]);
@@ -46,6 +49,34 @@ export async function POST(request: Request) {
       project.messages.push({id:crypto.randomUUID(),role:"assistant",text:result.reply,model:result.model,visuals:result.visuals,artifactId,createdAt:time});
       if(result.artifact)project.versions.push({...result.artifact,id:artifactId!,number:(project.versions.at(-1)?.number||0)+1,createdAt:time,source:result.model||result.provider,checks:"static-passed",runtime:{status:"pending",attempts:0,issues:[]}});
       await commitProject(project,userId,body.revision);return json({project});
+    }
+    if (body.action === "adopt-boardroom") {
+      const time = new Date().toISOString();
+      project.messages.push({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        text: body.content,
+        model: `Adopted · ${body.source}`,
+        createdAt: time,
+      });
+      await commitProject(project, userId, body.revision);
+      return json({ project });
+    }
+    if (body.action === "apply-correction") {
+      const msg = project.messages.find(m => m.id === body.messageId);
+      if (!msg) throw new HttpError(404, "Target message could not be found.");
+      msg.text = body.correction;
+      if (msg.factCheck) msg.factCheck.verdict = "verified";
+      await commitProject(project, userId, body.revision);
+      return json({ project });
+    }
+    if (body.action === "apply-second-opinion") {
+      const msg = project.messages.find(m => m.id === body.messageId);
+      if (!msg) throw new HttpError(404, "Target message could not be found.");
+      msg.text = body.revisionText;
+      if (msg.secondOpinion) msg.secondOpinion.verdict = "agrees";
+      await commitProject(project, userId, body.revision);
+      return json({ project });
     }
     if(body.action === "runtime"){
       const version=project.versions.at(-1);

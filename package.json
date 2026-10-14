@@ -13,7 +13,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/test-free-ai.mjs && node scripts/test-groq.mjs && node scripts/test-access.mjs && node scripts/test-visitor.mjs && node scripts/test-gemini.mjs && node scripts/test-provider-router.mjs && node scripts/test-generation-stream.mjs && node scripts/test-presentation.mjs && node scripts/test-shared-state.mjs",
+    "test": "node scripts/test-free-ai.mjs && node scripts/test-groq.mjs && node scripts/test-access.mjs && node scripts/test-visitor.mjs && node scripts/test-gemini.mjs && node scripts/test-provider-router.mjs && node scripts/test-generation-stream.mjs && node scripts/test-presentation.mjs && node scripts/test-shared-state.mjs && node scripts/test-fact-check.mjs && node scripts/test-boardroom.mjs && node scripts/test-privacy-proxy.mjs && node scripts/test-second-opinion.mjs && node scripts/test-pricing.mjs",
     "test:integration": "node scripts/test-workspace.mjs",
     "build:selfhost": "npm run build && node scripts/configure-hosting.mjs",
     "deploy:selfhost": "wrangler deploy --config dist/server/wrangler.json",

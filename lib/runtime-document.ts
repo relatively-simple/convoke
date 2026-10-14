@@ -43,12 +43,14 @@ function instrument(html:string,guard:string){
   visit(root);return serialize(root);
 }
 const json=(value:unknown)=>JSON.stringify(value).replace(/</g,"\\u003c");
-export function runtimeDocument(artifact:Artifact,token:string,origin:string,threeSource="",mathSource="",mathCSS=""){
+export function runtimeDocument(artifact:Artifact,token:string,origin:string,threeSource="",mathSource="",mathCSS="",pyodideSource=""){
   const guard="__convokeGuard"+token.replace(/[^a-z0-9]/gi,"");
   const html=artifact.python?"<pre id=python-output></pre>":instrument(artifact.html,guard);
   const assets=new URL("/runtime/",origin).href;
   const policy=`default-src 'none'; script-src 'unsafe-inline' 'wasm-unsafe-eval' ${assets}; style-src 'unsafe-inline'; img-src data:; font-src ${assets}; connect-src ${assets}; worker-src blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'`;
-  const workerCode=`importScripts(${json(assets+"pyodide.js")});onmessage=async e=>{let output='';try{const py=await loadPyodide({indexURL:${json(assets)},stdout:s=>{if(output.length<12000)output+=s+'\\n';},stderr:s=>{if(output.length<12000)output+=s+'\\n';}});postMessage({phase:'loaded'});await py.runPythonAsync(e.data);postMessage({ok:true,output});}catch(err){postMessage({ok:false,error:String(err).slice(0,1600),output});}};`;
+  // Pyodide source is inlined directly into the worker blob — blob worker content
+  // is parsed by the JS engine as a full program, not via eval, so no unsafe-eval needed.
+  const workerCode=`const _assets=${json(assets)};\n${pyodideSource}\nonmessage=async e=>{let output='';try{const py=await loadPyodide({indexURL:_assets,stdout:s=>{if(output.length<12000)output+=s+'\\n';},stderr:s=>{if(output.length<12000)output+=s+'\\n';}});postMessage({phase:'loaded'});await py.runPythonAsync(e.data);postMessage({ok:true,output});}catch(err){postMessage({ok:false,error:String(err).slice(0,1600),output});}};`;
   return `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="${policy}"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${mathCSS.replace(/<\/style/gi,"<\\/style")}body{margin:0;padding:20px;font:16px/1.6 system-ui;background:#101414;color:#e5ece8}pre{white-space:pre-wrap;overflow-wrap:anywhere}svg,canvas{max-width:100%}</style><script>
 const ${guard}=(()=>{let calls=0,start=performance.now();setInterval(()=>{calls=0;start=performance.now();},100);return()=>{if(++calls>100000||performance.now()-start>3000)throw Error('Execution budget exceeded');};})();
 (()=>{const token=${json(token)},errors=[];let done=false;const send=parent.postMessage.bind(parent);const report=extra=>{if(done)return;done=true;send({type:'convoke-runtime',token,issues:errors.slice(0,8),...extra},'*');};

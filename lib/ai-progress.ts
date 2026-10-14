@@ -1,5 +1,5 @@
 export type AIProgress = {
-  phase: "attempt" | "retry" | "success" | "checking";
+  phase: "attempt" | "retry" | "success" | "checking" | "fact-check" | "second-opinion" | "boardroom";
   provider: string;
   model: string;
   task: string;

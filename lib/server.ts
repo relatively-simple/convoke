@@ -14,16 +14,21 @@ export function errorResponse(error: unknown) {
   console.error("Workspace operation failed", error instanceof Error ? error.name : "Unknown error");
   return json({ error: "Could not save or load your work. Your last saved version is safe. Please try again." }, 503);
 }
+const utf8Decoder = new TextDecoder();
+const utf8Encoder = new TextEncoder();
+
 export async function readBody(request: Request) {
   if (request.headers.get("sec-fetch-site") === "cross-site") throw new HttpError(403, "Cross-site requests are not allowed.");
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) throw new HttpError(403, "This request came from a different site.");
   if (!request.headers.get("content-type")?.includes("application/json")) throw new HttpError(415, "Send a JSON request.");
+  const cl = request.headers.get("content-length");
+  if (cl && Number(cl) > 200000) throw new HttpError(413, "This request is too large.");
   const reader = request.body?.getReader(); if (!reader) throw new HttpError(400, "Request body is missing.");
   let length = 0; const chunks: Uint8Array[] = [];
   while (true) { const { done, value } = await reader.read(); if (done) break; length += value.byteLength; if (length > 200000) { await reader.cancel(); throw new HttpError(413, "This request is too large."); } chunks.push(value); }
   const bytes = new Uint8Array(length); let offset=0; for (const chunk of chunks) { bytes.set(chunk, offset); offset+=chunk.length; }
-  try { return JSON.parse(new TextDecoder().decode(bytes)); } catch { throw new HttpError(400, "Invalid JSON request."); }
+  try { return JSON.parse(utf8Decoder.decode(bytes)); } catch { throw new HttpError(400, "Invalid JSON request."); }
 }
 export async function getProject(id: string, userId: string): Promise<Project> {
   const row = await db().prepare("SELECT state FROM projects WHERE id = ? AND owner = ?").bind(id, userId).first<{ state: string }>();
@@ -32,7 +37,7 @@ export async function getProject(id: string, userId: string): Promise<Project> {
 }
 export function serialize(project: Project) {
   const value = JSON.stringify(project);
-  if (new TextEncoder().encode(value).length > 850000) throw new HttpError(413, "This project has reached its storage limit. Export your work and start a new project.");
+  if (utf8Encoder.encode(value).length > 850000) throw new HttpError(413, "This project has reached its storage limit. Export your work and start a new project.");
   return value;
 }
 export function checkCapacity(project: Project, addsVersion = false) {

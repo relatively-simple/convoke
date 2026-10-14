@@ -19,8 +19,10 @@ const questionSchema = { type: "object", properties: {
   options: { type: "array", maxItems: 3, items: { type: "array", minItems: 2, maxItems: 4, items: { type: "string", minLength: 1, maxLength: 120 } } },
 }, required: ["questions", "options"] };
 
+const utf8Encoder = new TextEncoder();
+
 export async function completeGemini(key: string, messages: ChatMessage[], task: Task, signal: AbortSignal, fetcher: typeof fetch = fetch, reserveCall: () => Promise<void> = async () => {}, wait: typeof waitForRetry = waitForRetry): Promise<Completion> {
-  if (new TextEncoder().encode(JSON.stringify(messages)).length > 90000) throw new HttpError(413, "This project context is too large. Save a concise brief and start a new project.");
+  if (utf8Encoder.encode(JSON.stringify(messages)).length > 90000) throw new HttpError(413, "This project context is too large. Save a concise brief and start a new project.");
   let last = new HttpError(503, "Google AI is temporarily busy. Please try again shortly.");
   let retryDelay: number = AI_RETRY.delayMs;
   const attempts = geminiModels(task).flatMap(model => Array<string>(AI_RETRY.attemptsPerModel).fill(model));

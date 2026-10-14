@@ -30,7 +30,7 @@ try{
  assert.match((await run({...working,tests:[{name:'Wrong expectation',steps:[{action:'text',selector:'#value',value:'99'}]}]})).issues.join(),/Wrong expectation/);
  assert.match((await run({title:'Isolation',html:'<p>Test</p><script>parent.document.body.dataset.unsafe="yes"</script>'})).issues.join(),/Blocked|cross-origin|SecurityError/i);
  assert.deepEqual((await run({title:'Three',html:'<p id="v"></p><script>document.getElementById("v").textContent=new THREE.Vector3(1,2,3).length().toFixed(2)</script>',libraries:['three'],tests:[{name:'Library loaded',steps:[{action:'text',selector:'#v',value:'3.74'}]}]})).issues,[]);
- const mathFrame=await page.evaluate(async()=>{
+ await page.evaluate(async()=>{
  const frame=document.createElement('iframe');frame.sandbox.add('allow-scripts');frame.title='Math fixture';frame.srcdoc=await window.documentForArtifact({title:'Math',html:'<p>\\[\\frac{1}{2}\\]</p>'},crypto.randomUUID());document.body.appendChild(frame);return true;
  });
  await page.frameLocator('iframe[title="Math fixture"]').locator('.katex').waitFor();

@@ -15,12 +15,17 @@ export async function renderDiagram(source:string,id:string){
 }
 function Diagram({visual}:{visual:Extract<Visual,{type:"mermaid"|"svg"}>}){
   const id="diagram"+useId().replace(/[^a-z0-9]/gi,"");const [svg,setSvg]=useState("");const [error,setError]=useState("");
-  useEffect(()=>{let live=true;setSvg("");setError("");void (async()=>{
-    try{const raw=visual.type==="mermaid"?await renderDiagram(visual.source,id):visual.source;
-      const clean=DOMPurify.sanitize(raw,{USE_PROFILES:{svg:true,svgFilters:true},FORBID_TAGS:["foreignObject","image","a","animate","set"],FORBID_ATTR:["href","xlink:href"]});
-      if(!clean.includes('<svg'))throw Error('No valid SVG content');if(live)setSvg(clean);
-    }catch{if(live)setError("This diagram could not be rendered. Its description and source are available below.");}
-  })();return()=>{live=false;};},[visual.source,visual.type,id]);
+  useEffect(()=>{
+    let live=true;
+    void (async()=>{
+      try{const raw=visual.type==="mermaid"?await renderDiagram(visual.source,id):visual.source;
+        const clean=DOMPurify.sanitize(raw,{USE_PROFILES:{svg:true,svgFilters:true},FORBID_TAGS:["foreignObject","image","a","animate","set"],FORBID_ATTR:["href","xlink:href"]});
+        if(!clean.includes('<svg'))throw Error('No valid SVG content');
+        if(live){setSvg(clean);setError("");}
+      }catch{if(live){setError("This diagram could not be rendered. Its description and source are available below.");setSvg("");}}
+    })();
+    return()=>{live=false;};
+  },[visual.source,visual.type,id]);
   return <>{svg?<img className="diagram-image" alt={visual.caption} src={"data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)}/>:error?<p role="status">{error}</p>:<p role="status">Preparing diagram…</p>}<details><summary>Diagram source</summary><pre>{visual.source}</pre></details></>;
 }
 function Chart({visual}:{visual:Extract<Visual,{type:"chart"}>}){

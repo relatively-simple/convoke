@@ -1,4 +1,4 @@
-import {mkdir,copyFile,readFile,writeFile,cp} from 'node:fs/promises';
+import {mkdir,copyFile,writeFile,cp} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 const root=new URL('../',import.meta.url);const out=new URL('public/runtime/',root);await mkdir(out,{recursive:true});
 for(const name of ['pyodide.js','pyodide.asm.mjs','pyodide.asm.wasm','pyodide-lock.json','python_stdlib.zip'])await copyFile(new URL('node_modules/pyodide/'+name,root),new URL(name,out));

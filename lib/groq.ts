@@ -5,8 +5,10 @@ import type { Task } from "./routing.ts";
 export function groqModels(task: Task) {
   return task === "clarify" ? ["openai/gpt-oss-20b","qwen/qwen3.8-27b"] : task === "coding" || task === "repair" ? ["qwen/qwen3.8-27b","openai/gpt-oss-120b"] : ["openai/gpt-oss-120b","qwen/qwen3.8-27b"];
 }
+const utf8Encoder = new TextEncoder();
+
 export async function completeGroq(key: string, messages: ChatMessage[], task: Task, signal: AbortSignal, fetcher: typeof fetch = fetch, reserveCall: () => Promise<void> = async()=>{}): Promise<Completion> {
-  if (new TextEncoder().encode(JSON.stringify(messages)).length > 24000) throw new HttpError(413,"This project is too large for the current Groq Free plan request budget. Start a new project with a shorter brief or ask for smaller tools.");
+  if (utf8Encoder.encode(JSON.stringify(messages)).length > 24000) throw new HttpError(413,"This project is too large for the current Groq Free plan request budget. Start a new project with a shorter brief or ask for smaller tools.");
   let last = new HttpError(503,"Groq is temporarily unavailable. Please retry shortly.");
   for (const [index,model] of groqModels(task).entries()) {
     if (signal.aborted) throw new HttpError(504,"The AI request timed out or was stopped. Your saved work is unchanged.");

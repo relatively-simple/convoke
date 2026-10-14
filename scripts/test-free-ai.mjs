@@ -8,6 +8,7 @@ const catalog=[{...base,id:'test/general:free',description:'general instruction'
 assert.equal(selectRoute(catalog,'coding',6000).model,'test/coder:free');
 assert.equal(selectRoute(catalog,'explain',6000).model,'test/general:free');
 assert.equal(selectRoute(catalog,'clarify',6000).model,'test/flash:free');
+assert.ok(selectRoute(catalog,'coding',6000,false).reason.includes('Smart routing switched off'));
 assert.equal(taskFor('auto','debug this code'),'coding');
 for(const pricing of [{prompt:'1',completion:'0'},{prompt:'',completion:'0'},{prompt:null,completion:0},{prompt:0,completion:0,request:1},{prompt:'NaN',completion:0},{prompt:0,completion:0,overrides:[]}]) assert.ok(!isFree({...base,id:'x:free',pricing}));
 assert.ok(!isFree({...base,id:'x/content-safety:free'}));
