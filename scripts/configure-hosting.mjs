@@ -6,5 +6,6 @@ config.name=settings.name;config.topLevelName=settings.name;
 config.d1_databases=[{binding:'DB',database_name:settings.name+'-db',database_id:settings.database_id}];
 config.vars=settings.auth_mode === 'public' ? {AUTH_MODE:'public'} : {AUTH_MODE:'access',ACCESS_TEAM_DOMAIN:settings.access_team_domain,ACCESS_AUD:settings.access_aud};
 config.workers_dev=true;
+config.assets={...config.assets,binding:"ASSETS"};
 fs.writeFileSync(process.argv[3] || 'dist/server/wrangler.json',JSON.stringify(config,null,2));
 console.log(`Prepared standalone Cloudflare deployment: ${config.vars.AUTH_MODE}.`);

@@ -1,6 +1,6 @@
 # Convoke architecture
 
-Current implementation, October 6, 2026. Convoke runs as a React/Vinext application on Cloudflare Workers, with Cloudflare D1 storage and server-held provider keys.
+Current implementation, October 14, 2026. Convoke runs as a React/Vinext application on Cloudflare Workers, with Cloudflare D1 storage and server-held provider keys.
 
 ```mermaid
 flowchart TB
@@ -13,10 +13,10 @@ flowchart TB
   subgraph cloudflare["Cloudflare Workers"]
     API["Application APIs<br/>Session · Workspace · Generate · Export"]
     Auth["Session verification<br/>Signed browser cookie + project ownership"]
-    Engine["Task orchestration<br/>Prompt + brief + confirmed answers + current artifact + recent messages"]
+    Engine["Task orchestration<br/>Prompt + brief + rolling memory + confirmed answers + versioned artifact + recent messages"]
     Planner["Thorough planner<br/>Ask only for missing details"]
     Router["Provider router<br/>Task routes · Failure cooldowns · Cross-provider fallback"]
-    Checks["Validate response and HTML / JavaScript<br/>Up to one AI repair"]
+    Checks["Validate response and HTML / JavaScript<br/>One static repair; browser runtime repair cycle"]
     Progress["Live NDJSON stream<br/>Provider · Model · Errors · Retry delay · Final result"]
     Secrets["Worker secrets<br/>Provider API keys + session signing key"]
 
@@ -68,7 +68,7 @@ flowchart TD
   Recheck -->|No| Error["Display error; preserve previous saved version"]
   Recheck -->|Yes| Save["Commit conversation and artifact version to D1"]
   Issues -->|No| Save
-  Save --> Display["Show answer and open the completed canvas"]
+  Save --> Display["Show visual blocks; test draft before opening the canvas"]
 ```
 
 ## Provider fallback
@@ -82,9 +82,19 @@ flowchart TD
 ## Important implementation boundaries
 
 - The browser canvas is a saved HTML artifact, not a shared filesystem or full code repository. AI requests include the latest artifact, project brief, confirmed task and recent conversation context.
-- HTML and JavaScript receive static validation and at most one repair. Generated code is previewed in a sandboxed iframe with a restrictive content-security policy; there is no server execution sandbox.
+- Static validation precedes hidden iframe execution and generated interaction tests. Browser reports are stored against the exact pending version, and up to three additional AI repairs preserve previous attempts. Python runs in a terminable worker inside the opaque iframe. These checks are client observations, not trusted security attestations. There is no server execution sandbox.
 - Public access uses a signed, Secure, HttpOnly browser cookie. Browser workspaces are separate, while provider credentials belong to the site owner. Optional Cloudflare Access or managed Sites identity is also supported.
 - Convoke imposes no daily AI-call cap. Provider quotas, rate limits and billing still apply. Storage and request-size bounds remain.
 - Model selection uses task routes and recent failures, not a statistical benchmark ranking. The failure cache is local to a Worker instance and does not guarantee global availability.
 
 Thorough mode asks a single set of up to twelve questions for the first request in a project, with an internal gap audit before presenting that set. Submitted answers and later prompts bypass planning and go directly to generation. Answers render as Markdown with local KaTeX math support. The canvas opens automatically only when the latest answer produced an artifact. Loading progress is an estimate capped at 90% until the saved result arrives.
+
+## Shared state and visual runtime
+
+Before generation, older messages are periodically folded into a bounded AI-maintained memory while the latest six messages remain verbatim. The user brief and latest request take precedence over that summary. Small edits use patches containing the exact base version ID and unique find/replace strings; stale or ambiguous patches are rejected and the model is asked for a full artifact. Every accepted edit is a new restorable version.
+
+Responses can contain typed table/chart/Mermaid/SVG blocks independently of HTML artifacts. Rendering supports LaTeX in chat and canvas. Mermaid is rendered with strict security settings and SVGs are sanitized and shown as image data. Charts have accessible data tables and every visual has a caption.
+
+A comparison runs one independent task per configured provider in parallel and saves the results together. Adoption is explicit; an artifact adopted from a comparison enters the same browser-check and repair flow. It is not peer review or fact verification.
+
+Runtime drafts are saved as pending, then executed in a hidden opaque-origin frame. Error/rejection/CSP events and declarative interaction checks produce bounded diagnostics. Failed attempts remain in version history, the browser requests a repair against the latest version, and a successful result is marked as having passed smoke checks. The frame uses inline bundled Three.js and KaTeX when needed. Python loads locally served Pyodide into a worker with a 45-second initialization budget and eight-second execution budget. Cancellation removes the hidden frame; a future visit can resume a pending draft. Loop guards and worker timeouts are defensive limits, not a formal correctness or memory-isolation guarantee.

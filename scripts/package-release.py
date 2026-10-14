@@ -10,7 +10,7 @@ if local.exists():
   if '=' in line:
    value=line.split('=',1)[1].strip().strip(chr(34)).strip(chr(39))
    if len(value)>20:secrets.append(value.encode())
-archive=out/'convoke-2.0-source.zip'
+archive=out/('convoke-'+json.loads((root/'package.json').read_text())['version']+'-source.zip')
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
  for name in files:
   if name.startswith(('examples/','outputs/','.git/')) or name=='STARTER.md':continue

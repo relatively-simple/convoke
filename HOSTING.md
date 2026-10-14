@@ -50,7 +50,7 @@ Preserve this secret across deployments so existing visitor cookies keep working
 
 Convoke tries the task-appropriate models across connected providers. When one is busy or fails, it tries another provider after five seconds, until it succeeds, is cancelled, or reaches the 20-minute request deadline. Recent failures influence model selection; account rate-limit waits are respected before reusing a model. Invalid keys or exhausted provider quotas disable that provider for the request. Safety refusals, cancellation and ownership checks are not bypassed by fallback.
 
-The loading view displays the actual provider/model, task stage, safe error category and retry delay through a streamed response. Raw provider error payloads and secrets are not displayed. Thorough mode defaults on, remembers your browser preference, checks for missing details, and supplies your confirmed answers to generation without repeating the quiz.
+The loading view shows quiet task progress while provider fallback runs. The final answer identifies its model. Raw provider error payloads and secrets are not displayed. Thorough mode defaults on, remembers your browser preference, checks for missing details, and supplies your confirmed answers to generation without repeating the quiz.
 
 **Convoke has no daily AI-call cap.** Provider quotas, rate limits, credits and billing still apply. Keep provider accounts on their free plans if zero API charges are required; Convoke cannot verify or enforce provider billing plans. Adding NVIDIA does not guarantee perpetual free or unlimited service. Bounded retries, request size, project storage and execution deadlines remain for reliable operation. The generation deadline is twenty minutes and the recovery lock expires one minute later.
 
@@ -89,3 +89,6 @@ npx wrangler d1 export DB --remote --config dist/server/wrangler.json --output b
 Store backups privately. Exported source ZIPs exclude keys, local databases, Git metadata and dependencies. Existing Sites conversations do not automatically migrate to a different Cloudflare account.
 
 References: https://ai.google.dev/gemini-api/docs/pricing , https://console.groq.com/docs/rate-limits , https://docs.api.nvidia.com/nim/reference/llm-apis , https://developers.cloudflare.com/workers/configuration/cloudflare-access/
+
+## Browser runtime assets
+`npm run dev` and `npm run build` regenerate Python, Three.js and KaTeX assets from pinned dependencies into ignored `public/runtime/`. Deploy the complete generated `dist/client` asset directory. Its `_headers` file permits cross-origin loading of runtime assets into opaque sandbox frames; API routes do not gain that permission. Python first use downloads approximately 14 MB and supports the standard library only. Keep the browser tab open during checks and repair. Interrupted pending drafts can resume using Run browser checks. Runtime checks do not certify correctness.

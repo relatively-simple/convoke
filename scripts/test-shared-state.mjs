@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {newProject,resultSchema} from '../lib/project.ts';
+import {applyArtifactPatch,summaryBatch} from '../lib/shared-state.ts';
+import {runTask,modelMessages} from '../lib/free-ai.ts';
+import {normalizeMath} from '../lib/presentation.ts';
+const project=newProject();project.versions.push({id:'v1',title:'Counter',html:'<p id="n">0</p>',number:1,source:'test',createdAt:'now'});
+const patch={baseVersionId:'v1',changes:[{find:'>0<',replace:'>1<'}]};
+assert.equal(applyArtifactPatch(project,patch).html,'<p id="n">1</p>');assert.equal(project.versions[0].html,'<p id="n">0</p>');
+assert.throws(()=>applyArtifactPatch(project,{...patch,baseVersionId:'stale'}),/different version/);
+assert.throws(()=>applyArtifactPatch(project,{...patch,changes:[{find:'missing',replace:'x'}]}),/exactly one/);
+project.versions[0].html='<p>x</p><p>x</p>';assert.throws(()=>applyArtifactPatch(project,{...patch,changes:[{find:'<p>x</p>',replace:'new'}]}),/exactly one/);project.versions[0].html='<p id="n">0</p>';
+const tasks=[];for(let i=0;i<12;i++)project.messages.push({id:String(i),role:i%2?'assistant':'user',text:'Decision '+i,createdAt:'now'});
+assert.equal(summaryBatch(project).length,6);
+const result=await runTask(project,'Change the number to one','build',false,async(messages,task)=>{
+ tasks.push(task);
+ if(task==='summary')return {content:JSON.stringify({summary:'The user needs a counter.'}),model:'test',tokens:5,route:{task,model:'test',reason:'test'}};
+ assert.match(messages[1].content,/The user needs a counter/);assert.equal(messages.filter(m=>m.role!=='system').length,8);
+ return {content:JSON.stringify({reply:'Updated',artifact:null,patch}),model:'test',tokens:5,route:{task,model:'test',reason:'test'}};
+});
+assert.deepEqual(tasks,['summary','coding']);assert.equal(result.result.artifact.html,'<p id="n">1</p>');assert.equal(result.editKind,'patch');assert.equal(project.memory.throughMessageId,'5');assert.equal(summaryBatch(project).length,0);
+assert.match(modelMessages(project,'Next','build')[1].content,/"id":"v1"/);
+assert.equal(resultSchema.safeParse({reply:'Hi',artifact:null,visuals:[{type:'chart',caption:'Data',kind:'bar',xLabel:'x',yLabel:'y',data:[{label:'A',value:2}]}]}).success,true);
+assert.equal(resultSchema.safeParse({reply:'Hi',artifact:null,visuals:[{type:'chart',caption:'Data',kind:'bar',xLabel:'x',yLabel:'y',data:[{label:'A',value:Infinity}]}]}).success,false);
+assert.match(normalizeMath('```latex\n\\frac{1}{2}\n```'),/\$\$/);
+assert.equal(normalizeMath('```js\nconst x="\\[code\\]";\n```'),'```js\nconst x="\\[code\\]";\n```');
+assert.match(normalizeMath(String.raw`\begin{align}a&=b\\c&=d\end{align}`),/^\n\$\$/);
+console.log('PASS: atomic versioned patches, ambiguous/stale rejection, rolling memory, recent-context window, visual contracts and math normalization.');

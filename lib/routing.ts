@@ -1,6 +1,6 @@
 import type { Mode } from "./project.ts";
 
-export type Task = "coding" | "reasoning" | "explain" | "clarify" | "repair";
+export type Task = "coding" | "reasoning" | "explain" | "clarify" | "repair" | "summary";
 export type CatalogModel = { id: string; name?: string; description?: string; context_length?: number; architecture?: { input_modalities?: string[]; output_modalities?: string[] }; pricing?: Record<string, unknown>; supported_parameters?: string[]; top_provider?: { max_completion_tokens?: number | null }; benchmarks?: { artificial_analysis?: { coding_index?: number | null; intelligence_index?: number | null } } };
 export type Route = { task: Task; model: string; reason: string };
 export const FREE_PROVIDER = { max_price: { prompt: 0, completion: 0, request: 0, image: 0 }, allow_fallbacks: true };

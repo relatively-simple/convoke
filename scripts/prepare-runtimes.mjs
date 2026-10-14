@@ -1,0 +1,11 @@
+import {mkdir,copyFile,readFile,writeFile,cp} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+const root=new URL('../',import.meta.url);const out=new URL('public/runtime/',root);await mkdir(out,{recursive:true});
+for(const name of ['pyodide.js','pyodide.asm.mjs','pyodide.asm.wasm','pyodide-lock.json','python_stdlib.zip'])await copyFile(new URL('node_modules/pyodide/'+name,root),new URL(name,out));
+const {build}=await import('esbuild');
+await build({entryPoints:[fileURLToPath(new URL('node_modules/three/build/three.module.js',root))],bundle:true,format:'iife',globalName:'THREE',minify:true,outfile:fileURLToPath(new URL('three.js',out))});
+await build({entryPoints:[fileURLToPath(new URL('node_modules/katex/dist/contrib/auto-render.mjs',root))],bundle:true,format:'iife',globalName:'ConvokeMath',minify:true,outfile:fileURLToPath(new URL('math.js',out))});
+await copyFile(new URL('node_modules/katex/dist/katex.min.css',root),new URL('katex.css',out));
+await cp(new URL('node_modules/katex/dist/fonts/',root),new URL('fonts/',out),{recursive:true});
+await writeFile(new URL('public/_headers',root),'/runtime/*\n  Access-Control-Allow-Origin: *\n  Cache-Control: public, max-age=3600\n');
+console.log('Prepared local Python and Three.js browser runtimes.');

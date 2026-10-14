@@ -1,4 +1,5 @@
 import { type ChatMessage, type Completion, parseJson, plannerSchema } from "./free-ai.ts";
+import { summarySchema } from "./shared-state.ts";
 import { resultSchema } from "./project.ts";
 import type { Task } from "./routing.ts";
 import { HttpError } from "./errors.ts";
@@ -10,8 +11,8 @@ export type ProviderKeys = Partial<Record<Provider, string>>;
 const names: Record<Provider, string> = { gemini: "Google Gemini", groq: "Groq", nvidia: "NVIDIA" };
 export function providerModels(provider: Provider, task: Task) {
   if (provider === "gemini") return ["gemini-3.7-flash", "gemini-3.8-flash"];
-  if (provider === "nvidia") return task === "clarify" ? ["openai/gpt-oss-20b", "deepseek-ai/deepseek-v4.1-flash"] : ["deepseek-ai/deepseek-v4.1-flash", "openai/gpt-oss-20b"];
-  return task === "clarify" ? ["openai/gpt-oss-20b", "qwen/qwen3.8-27b"] : task === "coding" || task === "repair" ? ["qwen/qwen3.8-27b", "openai/gpt-oss-120b"] : ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"];
+  if (provider === "nvidia") return (task === "clarify" || task === "summary") ? ["openai/gpt-oss-20b", "deepseek-ai/deepseek-v4.1-flash"] : ["deepseek-ai/deepseek-v4.1-flash", "openai/gpt-oss-20b"];
+  return (task === "clarify" || task === "summary") ? ["openai/gpt-oss-20b", "qwen/qwen3.8-27b"] : task === "coding" || task === "repair" ? ["qwen/qwen3.8-27b", "openai/gpt-oss-120b"] : ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"];
 }
 export class ProviderError extends HttpError {
   kind: string; retryMs: number; disable: "provider" | "model" | null;
@@ -36,7 +37,7 @@ export async function providerAttempt(provider: Provider, key: string, model: st
   const body = gemini ? {
     systemInstruction: { parts: messages.filter(m => m.role === "system").map(m => ({ text: m.content })) },
     contents: normalizedMessages(messages.filter(m => m.role !== "system")).map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
-    generationConfig: { responseMimeType: "application/json", maxOutputTokens: task === "clarify" ? 4096 : 16384 },
+    generationConfig: { responseMimeType: "application/json", maxOutputTokens: (task === "clarify" || task === "summary") ? 4096 : 16384 },
   } : {
     model, messages: normalizedMessages(messages), stream: false,
     ...(provider === "groq" ? { response_format: { type: "json_object" }, max_completion_tokens: 4000, reasoning_effort: model.startsWith("qwen/") ? "none" : "low" } : { max_tokens: 4096, ...(model.startsWith("openai/") ? { reasoning_effort: "low" } : {}) }),
@@ -69,7 +70,7 @@ export async function providerAttempt(provider: Provider, key: string, model: st
   if (data.promptFeedback?.blockReason || candidate?.finishReason === "SAFETY" || choice?.finish_reason === "content_filter") throw new HttpError(422, "The AI could not answer this request. Try rephrasing it.");
   if (candidate?.finishReason === "MAX_TOKENS" || choice?.finish_reason === "length") throw new ProviderError(502, "output_limit", "The response exceeded this model's output limit.");
   const content = gemini ? candidate?.content?.parts?.filter(p => !p.thought).map(p => p.text || "").join("") : choice?.message?.content;
-  try { if (!content || !(task === "clarify" ? plannerSchema : resultSchema).safeParse(parseJson(content)).success) throw Error("Invalid response"); }
+  try { if (!content || !(task === "summary" ? summarySchema : task === "clarify" ? plannerSchema : resultSchema).safeParse(parseJson(content)).success) throw Error("Invalid response"); }
   catch { throw new ProviderError(502, "invalid_response", "The model returned an incomplete or invalid response."); }
   return { content: content!, model: `${names[provider]} · ${model}`, tokens: data.usageMetadata?.totalTokenCount || data.usage?.total_tokens || 0, route: { task, model, reason: `${names[provider]} returned a valid ${task} response.` } };
 }
@@ -101,7 +102,7 @@ export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, re
         if (signal.aborted) throw new HttpError(409, "This request was stopped.");
         await reserve(); // Cancellation and project ownership checks must never be bypassed by fallback.
         attempt++;
-        progress({ phase: "attempt", provider: names[provider], model, task, attempt, message: task === "clarify" ? "Checking your prompt for missing details" : task === "repair" ? "Repairing the generated code" : "Generating your result" });
+        progress({ phase: "attempt", provider: names[provider], model, task, attempt, message: (task === "clarify" || task === "summary") ? "Checking your prompt for missing details" : task === "repair" ? "Repairing the generated code" : "Generating your result" });
         try {
           const result = await providerAttempt(provider, keys[provider]!, model, messages, task, signal, options.fetcher);
           health.delete(provider + ":" + model);

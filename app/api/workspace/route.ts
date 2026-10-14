@@ -5,7 +5,9 @@ export const dynamic = "force-dynamic";
 const id = z.string().uuid();
 const actions = z.discriminatedUnion("action", [
   z.object({ action: z.literal("create"), title: z.string().trim().min(1).max(100), mode: modeSchema }),
-  z.object({ action: z.literal("save"), projectId: id, revision: z.number().int().nonnegative(), title: z.string().trim().min(1).max(100).optional(), brief: z.string().max(4000).optional(), html: z.string().min(1).max(45000).optional(), artifactTitle: z.string().min(1).max(100).optional(), restoreId: id.optional() }),
+  z.object({ action: z.literal("save"), projectId: id, revision: z.number().int().nonnegative(), title: z.string().trim().min(1).max(100).optional(), brief: z.string().max(4000).optional(), html: z.string().min(1).max(45000).optional(), python:z.string().min(1).max(16000).optional(), artifactTitle: z.string().min(1).max(100).optional(), restoreId: id.optional() }),
+  z.object({action:z.literal("adopt"),projectId:id,revision:z.number().int().nonnegative(),comparisonId:id,resultId:id}),
+  z.object({ action:z.literal("runtime"),projectId:id,revision:z.number().int().nonnegative(),versionId:id,issues:z.array(z.string().max(1600)).max(8),output:z.string().max(12000).optional(),testsPassed:z.number().optional() }),
   z.object({ action: z.literal("cancel"), projectId: id, runId: id }),
 ]);
 export async function GET() {
@@ -37,14 +39,28 @@ export async function POST(request: Request) {
       return json({ stopped: true });
     }
     if (project.revision !== body.revision) throw new HttpError(409, "A newer version exists. Reload this project before saving.");
-    if (body.html && body.restoreId) throw new HttpError(400, "Choose either an edit or a restore.");
+    if(body.action === "adopt"){
+      const comparison=project.comparison,result=comparison?.results.find(r=>r.id===body.resultId);
+      if(!comparison||comparison.id!==body.comparisonId||!result||result.error||!result.reply)throw new HttpError(409,"This comparison result is no longer available.");
+      checkCapacity(project,!!result.artifact);const time=new Date().toISOString(),artifactId=result.artifact?crypto.randomUUID():undefined;
+      project.messages.push({id:crypto.randomUUID(),role:"assistant",text:result.reply,model:result.model,visuals:result.visuals,artifactId,createdAt:time});
+      if(result.artifact)project.versions.push({...result.artifact,id:artifactId!,number:(project.versions.at(-1)?.number||0)+1,createdAt:time,source:result.model||result.provider,checks:"static-passed",runtime:{status:"pending",attempts:0,issues:[]}});
+      await commitProject(project,userId,body.revision);return json({project});
+    }
+    if(body.action === "runtime"){
+      const version=project.versions.at(-1);
+      if(!version || version.id!==body.versionId || !version.runtime || version.runtime.status!=="pending")throw new HttpError(409,"This draft is no longer awaiting browser checks.");
+      version.runtime={...version.runtime,status:body.issues.length?"failed":"passed",issues:body.issues,output:body.output,testedAt:new Date().toISOString()};
+      await commitProject(project,userId,body.revision);return json({project});
+    }
+    if ((body.html || body.python) && body.restoreId) throw new HttpError(400, "Choose either an edit or a restore.");
     if (body.title !== undefined) project.title = body.title;
     if (body.brief !== undefined) project.brief = body.brief;
-    if (body.html || body.restoreId) {
+    if (body.html || body.python || body.restoreId) {
       checkCapacity(project, true);
       const restored = body.restoreId ? project.versions.find(v => v.id === body.restoreId) : null;
       if (body.restoreId && !restored) throw new HttpError(404, "That version could not be found.");
-      project.versions.push({ id: crypto.randomUUID(), number: (project.versions.at(-1)?.number || 0)+1, createdAt: new Date().toISOString(), source: restored ? `Restored v${restored.number}` : "manual", title: restored?.title || body.artifactTitle || "Untitled artifact", html: restored?.html || body.html! });
+      project.versions.push({ id: crypto.randomUUID(), number: (project.versions.at(-1)?.number || 0)+1, createdAt: new Date().toISOString(), source: restored ? `Restored v${restored.number}` : "manual", title: restored?.title || body.artifactTitle || "Untitled artifact", html: restored?.html || body.html || "", python:restored?.python || body.python,tests:restored?.tests || (body.html ? project.versions.at(-1)?.tests : undefined),libraries:restored?.libraries || (body.html ? project.versions.at(-1)?.libraries : undefined),runtime:{status:"pending",attempts:0,issues:[]} });
     }
     await commitProject(project, userId, body.revision); return json({ project });
   } catch (e) { return errorResponse(e); }
