@@ -123,6 +123,7 @@ Convoke 3.0 is a multi-model AI synthesis workspace and collaboration platform b
 | LINT-05 | `lib/free-ai.ts:143,156,178` | Medium | Type Safety | `let ...: any` parsed variables without `const` or type narrowing | Extracted `sanitizeEmptyArtifact` with safe type narrowing and `const` | Resolved |
 | LINT-06 | `lib/provider-router.ts:93,105` | Medium | Type Safety | `any` types on JSON parsed objects and clarify options mapping | Use `Record<string, unknown> \| null` with runtime object checks and `(x: unknown)` | Resolved |
 | LIB-01 | `lib/privacy-proxy.ts:100-140` | High | Correctness / Security | Overlapping entity candidate matches (e.g. digits in an API key matching CC/phone) corrupt text masking slice boundaries | Implemented `hasOverlap` check before admitting candidate entities | Resolved |
+| LIB-02 | `lib/routing.ts:16`, `lib/free-ai.ts:29,129` | Medium | Correctness | Inconsistent visual prompt regexes omitted keywords like `draw` and `render` in routing and deliberation | Centralized `VISUAL_PROMPT_REGEX` across routing, prompts, and visual deliberation | Resolved |
 
 ---
 

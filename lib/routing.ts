@@ -11,9 +11,11 @@ export function isFree(model: CatalogModel) {
     zero(model.pricing.prompt) && zero(model.pricing.completion) && Object.values(model.pricing).every(zero) &&
     model.architecture?.input_modalities?.includes("text") && model.architecture?.output_modalities?.includes("text");
 }
+export const VISUAL_PROMPT_REGEX = /\b(visual|visualize|visualization|visuals|diagram|chart|graph|plot|animation|simulate|simulation|interactive|canvas|draw|render)\b/i;
+
 export function taskFor(mode: Mode, prompt: string): Task {
   if (mode === "build") return "coding";
-  if (/\b(visual|visualize|visualization|visuals|diagram|chart|graph|plot|animation|simulate|simulation|interactive|canvas)\b/i.test(prompt)) return "coding";
+  if (VISUAL_PROMPT_REGEX.test(prompt)) return "coding";
   if (mode === "explain") return "explain";
   if (/\b(code|coding|build|debug|fix|html|javascript|app|website|calculator|timer)\b/i.test(prompt)) return "coding";
   if (/\b(prove|proof|logic|reason|solve|equation|calculate|math)\b/i.test(prompt)) return "reasoning";

@@ -38,6 +38,9 @@ const result=await completeFree('fixture-key',catalog,[{role:'user',content:'Bui
 assert.equal(result.tokens,42);assert.equal(requestBody.model,'test/coder:free');assert.deepEqual(requestBody.provider,FREE_PROVIDER);assert.equal(requestBody.provider.max_price.request,0);
 await assert.rejects(completeFree('fixture-key',catalog,[],'coding',new AbortController().signal,async()=>new Response('',{status:429})),/free AI providers took too long/);
 await assert.rejects(completeFree('fixture-key',catalog,[],'coding',new AbortController().signal,async()=>Response.json({choices:[{finish_reason:'length',message:{content:'{}'}}]})),/output limit/);
+assert.equal(taskFor("auto", "draw an iron rod heat profile"), "coding");
+assert.equal(taskFor("auto", "render a 3d wave simulation"), "coding");
+assert.equal(taskFor("auto", "visualize solar system"), "coding");
 console.log('PASS: free routing, zero-price guards, task selection, clarification, bounded repair, state preservation, provider errors and request contract. Provider responses simulated; no live inference.');
 
 let attempts=0,reservations=0;
