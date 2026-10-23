@@ -15,7 +15,7 @@ export type Message = { id: string; role: "user" | "assistant"; text: string; mo
 export type Clarification = { id: string; prompt: string; mode: Mode; questions: string[]; options?: string[][] };
 export type Comparison = {id:string;prompt:string;createdAt:string;results:{id:string;provider:string;model?:string;reply?:string;visuals?:Visual[];artifact?:Artifact|null;tokens?:number;error?:string}[]};
 export type Project = { id: string; title: string; revision: number; updatedAt: string; mode: Mode; brief: string; comparison?:Comparison; boardroom?: BoardroomSession; memory?:{text:string;throughMessageId:string;updatedAt:string}; messages: Message[]; versions: Version[]; clarification?: Clarification; confirmedTask?: { prompt: string; answers: { question: string; answer: string }[] } };
-export type Capabilities = { live: boolean; model: string | null; dailyLimit: number | null; provider?: string };
+export type Capabilities = { live: boolean; model: string | null; dailyLimit: number | null; provider?: string; providers?: string[] };
 export function newProject(title = "Untitled project"): Project {
   return { id: crypto.randomUUID(), title, revision: 0, updatedAt: new Date().toISOString(), mode: "auto", brief: "", messages: [], versions: [] };
 }

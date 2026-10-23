@@ -8,6 +8,8 @@ declare namespace Cloudflare {
     NVIDIA_API_KEY?: string;
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
+    RESEND_API_KEY?: string;
+    MAIL_FROM?: string;
     AUTH_MODE?: "sites" | "access" | "public";
     SESSION_SECRET?: string;
     ACCESS_TEAM_DOMAIN?: string;

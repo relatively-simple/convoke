@@ -48,6 +48,7 @@ next-env.d.ts
 /.codex/
 /outputs/
 /work/
+convoke-ui-finalisation-agent-prompt.md
 
 /hosting.json
 

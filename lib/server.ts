@@ -5,7 +5,7 @@ import { type Project } from "./project";
 import { HttpError } from "./errors";
 export { HttpError } from "./errors";
 export function db() { if (!env.DB) throw new HttpError(503, "Project storage is unavailable. Please try again shortly."); return env.DB; }
-export function capabilities() { const providers = [env.GEMINI_API_KEY && "Google Gemini", env.GROQ_API_KEY && "Groq", env.NVIDIA_API_KEY && "NVIDIA"].filter(Boolean); return { live: providers.length > 0, provider: providers.join(" / "), model: "Automatic routing across connected providers", dailyLimit: null }; }
+export function capabilities() { const providers = [env.GEMINI_API_KEY && "Google Gemini", env.GROQ_API_KEY && "Groq", env.NVIDIA_API_KEY && "NVIDIA NIM"].filter(Boolean) as string[]; return { live: providers.length > 0, provider: providers.join(" / "), providers, model: "Automatic routing across connected providers", dailyLimit: null }; }
 export async function owner() { const user = await getChatGPTUser(); if (!user) throw new HttpError(401, "Please sign in to open your workspace."); return user.userId; }
 export function json(data: unknown, status = 200) { return Response.json(data, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } }); }
 export function errorResponse(error: unknown) {

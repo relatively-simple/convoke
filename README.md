@@ -28,7 +28,7 @@ Most people interact with AI through static chat boxes that suffer from five cri
 
 | Feature | Standard AI Chatbots | Convoke 3.0 Workspace |
 | :--- | :--- | :--- |
-| **Model Engine** | Single vendor lock-in (OpenAI or Anthropic or Google) | **Tri-Model Powerhouse:** Combines the strengths of ChatGPT, Gemini, and Claude (Commercial Tier) + Groq/Gemini/NVIDIA (Free Tier) |
+| **Model Engine** | Single vendor lock-in (OpenAI or Anthropic or Google) | **Multi-Model Consensus:** Intelligent edge router combining Google Gemini, Groq, and NVIDIA NIM with autonomous failover and load balancing |
 | **Visual Simulations** | Flat static diagrams or non-functional images | **Multi-Model Visual Deliberation:** Gemini physical principles + Groq 60 FPS animation loop + NVIDIA interactive control sliders |
 | **Loading Feedback** | Blank, frozen spinner or generic percentage | **Live Typewriter Activity Stream:** Letter-by-letter behind-the-scenes progress showing real-time model collaboration |
 | **Thread Management** | Permanent clutter or cumbersome menus | **Subtle Thread Deletion:** Clean, discoverable thread deletion with safety confirmation |
@@ -42,11 +42,10 @@ Most people interact with AI through static chat boxes that suffer from five cri
 
 ## 🚀 Key Features in Convoke 3.0
 
-### 🏛️ Tri-Model Architecture & Free Community Tier
-Convoke 3.0 is engineered with a powerful dual-tier architecture:
-- **Convoke 3.0 Pro Tri-Model Engine (Flagship Architecture):** Harnesses the trifecta of frontier AI—**OpenAI ChatGPT (o1 / GPT-4o)** for rigorous multi-step logic, **Google Gemini 2.0 Pro** for vast multimodal context, and **Anthropic Claude 3.7 Sonnet** for elite coding and structural design.
-- **Free Community Tier (Active Live Demo):** An ultra-fast, zero-friction edge router powered by **Groq (GPT-OSS 120B / Qwen 2.5)**, **Google Gemini Flash**, and **NVIDIA NIM DeepSeek**. Instant sub-5-second inference with zero user subscription required.
-- **2-Try Model Failover:** If any model times out (15s deadline) or errors twice, Convoke automatically advances to the next best provider without interrupting your flow.
+### 🏛️ Multi-Model Consensus Architecture & Edge Mesh
+Convoke is engineered with a high-throughput multi-provider edge router:
+- **Redundant Model Mesh:** Fast inference mesh powered by **Google Gemini** (Gemini 2.5 Flash), **Groq** (Llama 3.3 70B & Qwen 2.5), and **NVIDIA NIM** (DeepSeek). High throughput with zero required client-side keys.
+- **2-Try Model Failover:** If any model times out or encounters a transient rate limit, Convoke automatically retires the failing provider and advances to the next best provider without interrupting your flow.
 
 ### 🎨 Multi-Model Visual Self-Improvement Deliberation
 Instead of returning flat, static diagrams, Convoke 3.0 executes an automated self-improvement design deliberation between models before generating visual software:
@@ -161,6 +160,14 @@ npm run deploy:selfhost
 ```
 
 Your app will be live at `https://convoke.<your-subdomain>.workers.dev` with a globally replicated D1 SQLite database and edge worker.
+
+---
+
+## 🗺️ Roadmap
+
+- **Commercial Tier Model Adapters:** Planned opt-in adapters for direct OpenAI (o1 / GPT-4o) and Anthropic (Claude 3.7 Sonnet) commercial enterprise API keys.
+- **Enterprise Team Workspaces:** Multi-tenant project collaboration with role-based access control.
+- **Offline PWA Runtime:** Offline inspection and offline sandbox preview for cached projects.
 
 ---
 

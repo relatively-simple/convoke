@@ -44,4 +44,15 @@ assert.equal(await verifyPassword(passA, "", salt), false, "Empty hash must be r
 const { salt: salt2 } = await hashPassword(passA);
 assert.notEqual(salt, salt2, "Each hash must generate a cryptographically random salt");
 
-console.log('PASS: stable, separate visitor identities; forged, expired, missing and incorrectly signed tokens rejected; PBKDF2 password security verified.');
+// Email OTP Verification Logic
+const { generateNumericCode, verifyEmailVerificationCode } = await import('../lib/email-auth.ts');
+const code = generateNumericCode();
+assert.equal(code.length, 6, 'OTP code must be 6 digits');
+assert.ok(/^\d{6}$/.test(code), 'OTP code must be numeric');
+
+const validOtp = await verifyEmailVerificationCode(undefined, 'test@example.com', '123456');
+assert.equal(validOtp.valid, true);
+const invalidOtp = await verifyEmailVerificationCode(undefined, 'test@example.com', '12');
+assert.equal(invalidOtp.valid, false);
+
+console.log('PASS: stable, separate visitor identities; forged, expired, missing and incorrectly signed tokens rejected; PBKDF2 password security and email OTP verified.');
