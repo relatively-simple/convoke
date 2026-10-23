@@ -16,10 +16,16 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Convoke — Your ideas, taking shape",
   description: "An AI workspace for making, understanding, and keeping your ideas moving.",
+  manifest: "/manifest.json",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
     apple: "/favicon.svg",
+  },
+  openGraph: {
+    title: "Convoke",
+    description: "An AI workspace for making, understanding, and keeping your ideas moving.",
+    type: "website",
   },
 };
 

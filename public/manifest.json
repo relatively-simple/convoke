@@ -1,0 +1,16 @@
+{
+  "name": "Convoke",
+  "short_name": "Convoke",
+  "description": "Multi-Model AI Workspace for Interactive Visual Artifacts & Deliberation",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070809",
+  "theme_color": "#228458",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
