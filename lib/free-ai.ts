@@ -28,6 +28,10 @@ export function sanitizeEmptyArtifact(parsed: unknown): unknown {
   if (parsed && typeof parsed === "object" && "artifact" in parsed) {
     const art = (parsed as { artifact: unknown }).artifact;
     if (art && typeof art === "object") {
+      const artObj = art as Record<string, unknown>;
+      if (artObj.python === null || typeof artObj.python !== "string" || !artObj.python.trim()) delete artObj.python;
+      if (artObj.libraries === null || !Array.isArray(artObj.libraries)) delete artObj.libraries;
+      if (artObj.tests === null || !Array.isArray(artObj.tests)) delete artObj.tests;
       const { html, python } = art as { html?: unknown; python?: unknown };
       const hasHtml = typeof html === "string" && html.trim().length > 0;
       const hasPython = typeof python === "string" && python.trim().length > 0;

@@ -51,7 +51,7 @@ export async function providerAttempt(provider: Provider, key: string, model: st
   } : {
     model, messages: normalizedMessages(messages), stream: false,
     ...(provider === "groq"
-      ? { response_format: { type: "json_object" }, max_completion_tokens: (task === "clarify" || task === "summary") ? 1000 : 4000, ...(model.startsWith("openai/") ? { reasoning_effort: "low" } : {}) }
+      ? { response_format: { type: "json_object" }, max_completion_tokens: (task === "clarify" || task === "summary") ? 1000 : 8000, ...(model.startsWith("openai/") ? { reasoning_effort: "low" } : {}) }
       : { max_tokens: 4096, ...(model.startsWith("openai/") ? { reasoning_effort: "low" } : {}) }),
   };
   let response: Response;
@@ -105,6 +105,10 @@ export async function providerAttempt(provider: Provider, key: string, model: st
           if (!art.title || typeof art.title !== "string" || !art.title.trim()) art.title = "Untitled";
           // Ensure html is always present as string
           if (typeof art.html !== "string") art.html = "";
+          // Sanitize python: if null or not a non-empty string, delete it
+          if (art.python === null || typeof art.python !== "string" || !art.python.trim()) {
+            delete (art as Record<string, unknown>).python;
+          }
           // Sanitize tests: must be array of {name, steps}
           if (Array.isArray(art.tests)) {
             art.tests = art.tests
