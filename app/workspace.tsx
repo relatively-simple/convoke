@@ -593,7 +593,7 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
     return ()=>lifecycle.abort();
   }, [active]);
   return <SidebarProvider style={{ "--sidebar-width": "228px" } as React.CSSProperties}>
-    <Toaster theme="dark" richColors position="bottom-center" />
+    <Toaster theme="system" richColors position="bottom-center" />
     <Sidebar className="workspace-sidebar">
       <SidebarHeader><a className="brand" href="/" aria-label="Convoke home"><span className="brand-icon"><Orbit size={23}/></span>convoke</a><Button className="new-project" onClick={()=>chooseProject(null)} disabled={busy}><Plus size={17}/>New project</Button></SidebarHeader>
       <SidebarContent><SidebarGroup><SidebarGroupLabel>Your projects <span>{projects.length}</span></SidebarGroupLabel><SidebarMenu>{projects.map(p=><SidebarMenuItem key={p.id} className="project-menu-item"><SidebarMenuButton isActive={p.id===activeId} onClick={()=>chooseProject(p.id)} disabled={busy} title={p.title}><MessageSquare size={16}/><span className="project-title-label">{p.title}</span></SidebarMenuButton><button type="button" className="project-delete-trigger" onClick={e=>{e.stopPropagation();setConfirmDeleteId(p.id);}} disabled={busy} title="Delete chat thread" aria-label={`Delete ${p.title}`}><Trash2 size={13}/></button></SidebarMenuItem>)}</SidebarMenu>{!projects.length&&<p className="sidebar-empty">Your ideas will find<br/>a home here.</p>}</SidebarGroup></SidebarContent>

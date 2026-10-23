@@ -1,0 +1,149 @@
+:root {
+  /* Surface colors - Light */
+  --bg: #fbfbfd;
+  --bg-elevated: #ffffff;
+  --bg-sunken: #f2f2f7;
+  --fill-1: rgba(0, 0, 0, 0.04);
+  --fill-2: rgba(0, 0, 0, 0.07);
+  --fill-3: rgba(0, 0, 0, 0.12);
+
+  /* Typography / Labels - Light */
+  --label: #1d1d1f;
+  --label-secondary: #57575b;
+  --label-tertiary: #7d7d82;
+
+  /* Separators & Outlines - Light */
+  --separator: rgba(0, 0, 0, 0.09);
+  --border-subtle: rgba(0, 0, 0, 0.06);
+
+  /* Brand Accent & Semantics (WCAG 2.2 AA Contrast >= 4.5:1) */
+  --accent: #228458;
+  --accent-contrast: #ffffff;
+  --accent-muted: rgba(34, 132, 88, 0.12);
+  --success: #1e7e48;
+  --warning: #b45309;
+  --danger: #be123c;
+
+  /* Sidebar - Light */
+  --sidebar: #f5f5f7;
+  --sidebar-foreground: #1d1d1f;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --sidebar-accent: rgba(0, 0, 0, 0.05);
+  --sidebar-accent-foreground: #1d1d1f;
+  --sidebar-ring: #228458;
+
+  /* Standard Shadcn compatibility aliases */
+  --background: var(--bg);
+  --foreground: var(--label);
+  --card: var(--bg-elevated);
+  --card-foreground: var(--label);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--label);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-contrast);
+  --secondary: var(--bg-sunken);
+  --secondary-foreground: var(--label);
+  --muted: var(--bg-sunken);
+  --muted-foreground: var(--label-secondary);
+  --destructive: var(--danger);
+  --destructive-foreground: #ffffff;
+  --border: var(--separator);
+  --input: var(--separator);
+  --ring: var(--accent);
+
+  /* Chart palette */
+  --chart-1: #228458;
+  --chart-2: #3b82f6;
+  --chart-3: #8b5cf6;
+  --chart-4: #f59e0b;
+  --chart-5: #10b981;
+
+  /* Radii */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius: 12px;
+
+  /* Shadows (Soft, Apple-grade, non-decorative) */
+  --shadow-1: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-2: 0 4px 14px 0 rgba(0, 0, 0, 0.06), 0 1px 3px 0 rgba(0, 0, 0, 0.03);
+  --shadow-3: 0 12px 32px 0 rgba(0, 0, 0, 0.1), 0 2px 6px 0 rgba(0, 0, 0, 0.04);
+
+  /* Motion tokens (§5) */
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-emphasized: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-pop: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --dur-instant: 100ms;
+  --dur-fast: 160ms;
+  --dur-base: 240ms;
+  --dur-slow: 400ms;
+  --dur-page: 600ms;
+}
+
+.dark {
+  /* Surface colors - Dark (layered near-black #070809 family) */
+  --bg: #070809;
+  --bg-elevated: #111317;
+  --bg-sunken: #0b0d10;
+  --fill-1: rgba(255, 255, 255, 0.04);
+  --fill-2: rgba(255, 255, 255, 0.07);
+  --fill-3: rgba(255, 255, 255, 0.12);
+
+  /* Typography / Labels - Dark */
+  --label: #f5f5f7;
+  --label-secondary: #9e9ea4;
+  --label-tertiary: #6b6b72;
+
+  /* Separators & Outlines - Dark */
+  --separator: rgba(255, 255, 255, 0.09);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+
+  /* Brand Accent & Semantics (Dark mode mint) */
+  --accent: #34d399;
+  --accent-contrast: #070809;
+  --accent-muted: rgba(52, 211, 153, 0.14);
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #fb7185;
+
+  /* Sidebar - Dark */
+  --sidebar: #0b0d10;
+  --sidebar-foreground: #f5f5f7;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-accent: rgba(255, 255, 255, 0.05);
+  --sidebar-accent-foreground: #f5f5f7;
+  --sidebar-ring: #34d399;
+
+  /* Standard Shadcn compatibility aliases - Dark */
+  --background: var(--bg);
+  --foreground: var(--label);
+  --card: var(--bg-elevated);
+  --card-foreground: var(--label);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--label);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-contrast);
+  --secondary: var(--bg-sunken);
+  --secondary-foreground: var(--label);
+  --muted: var(--bg-sunken);
+  --muted-foreground: var(--label-secondary);
+  --destructive: var(--danger);
+  --destructive-foreground: #070809;
+  --border: var(--separator);
+  --input: var(--separator);
+  --ring: var(--accent);
+
+  /* Chart palette - Dark */
+  --chart-1: #34d399;
+  --chart-2: #60a5fa;
+  --chart-3: #a78bfa;
+  --chart-4: #fbbf24;
+  --chart-5: #2dd4bf;
+
+  /* Shadows - Dark */
+  --shadow-1: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 14px 0 rgba(0, 0, 0, 0.5), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --shadow-3: 0 12px 32px 0 rgba(0, 0, 0, 0.7), 0 2px 6px 0 rgba(0, 0, 0, 0.4);
+}

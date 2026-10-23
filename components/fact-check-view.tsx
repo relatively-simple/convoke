@@ -45,21 +45,16 @@ export function FactCheckView({
 
   return (
     <div className={`fact-check-card ${badgeClass}`}>
-      <div className="fact-check-header" onClick={() => setExpanded(!expanded)} role="button" tabIndex={0}>
+      <button type="button" className="fact-check-header" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>
         <div className="fact-check-title">
           <span className="fact-check-icon">{badgeIcon}</span>
           <strong>{verdictLabel}</strong>
           <small>{report.claims.length} claim{report.claims.length === 1 ? "" : "s"} checked</small>
         </div>
-        <button
-          type="button"
-          className="fact-check-toggle"
-          aria-expanded={expanded}
-          aria-label={expanded ? "Hide claims" : "Show claims"}
-        >
+        <span className="fact-check-toggle" aria-hidden="true">
           {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-        </button>
-      </div>
+        </span>
+      </button>
 
       <div className="fact-check-summary"><Answer text={report.summary} /></div>
 

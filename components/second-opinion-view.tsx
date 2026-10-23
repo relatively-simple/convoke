@@ -30,7 +30,7 @@ export function SecondOpinionView({
 
   return (
     <div className="opinion-card">
-      <div className="opinion-header" onClick={() => setExpanded(!expanded)} role="button" tabIndex={0}>
+      <button type="button" className="opinion-header" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>
         <div className="opinion-title-row">
           <ShieldCheck size={16} className="opinion-icon" />
           <div className="opinion-meta">
@@ -40,19 +40,11 @@ export function SecondOpinionView({
         </div>
         <div className="opinion-status-row">
           {verdictBadge()}
-          <button
-            type="button"
-            className="opinion-toggle"
-            aria-label={expanded ? "Collapse opinion" : "Expand opinion"}
-            onClick={(e) => {
-              e.stopPropagation();
-              setExpanded(!expanded);
-            }}
-          >
+          <span className="opinion-toggle" aria-hidden="true">
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
+          </span>
         </div>
-      </div>
+      </button>
 
       {expanded && (
         <div className="opinion-body">
