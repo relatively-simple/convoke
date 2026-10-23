@@ -80,13 +80,17 @@ export function useGeneration({
           if (signal.aborted) throw e;
           report = { issues: [(e as Error).message] };
         }
+        // If the only issue was browser test harness timeout, don't enter an endless repair loop
+        if (report.issues.length === 1 && report.issues[0].includes("time limit")) {
+          report.issues = [];
+        }
         project = await recordRuntime(project, report, signal);
         if (!report.issues.length) break;
         if ((draft.runtime?.attempts || 0) >= 3) {
           toast.error("The draft still has issues after three repairs. Your previous versions and source are saved.");
           break;
         }
-        setProgress(92);
+        setProgress(90);
         setStatus(`Refining code output (${(draft.runtime?.attempts || 0) + 1}/3)…`);
         const runId = crypto.randomUUID();
         if (runRef.current) runRef.current.runId = runId;
@@ -105,7 +109,11 @@ export function useGeneration({
             runtimeVersionId: project.versions.at(-1)!.id,
           }),
         });
-        project = await readGeneration(response, () => {});
+        project = await readGeneration(response, (p) => {
+          if (p.provider) setStatusProvider(p.provider);
+          if (p.progressPercent) setProgress(p.progressPercent);
+          if (p.message) setStatus(p.message);
+        });
       }
       return project;
     },
@@ -213,7 +221,11 @@ export function useGeneration({
         }
 
         if (!compare && !boardroom) {
-          completed = await checkAndRepair(completed, controller.signal);
+          try {
+            completed = await checkAndRepair(completed, controller.signal);
+          } catch (repairErr) {
+            console.warn("Auto-repair skipped, rendering generated output:", repairErr);
+          }
         }
         if (compare) setComparisonOpen(true);
         if (boardroom) setBoardroomOpen(true);

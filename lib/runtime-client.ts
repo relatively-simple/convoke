@@ -41,7 +41,7 @@ export async function testArtifact(artifact:Artifact,signal:AbortSignal):Promise
       if(event.source!==frame.contentWindow||(event.origin!=='null'&&event.origin!==''&&event.origin!==location.origin)||data?.type!=='convoke-runtime'||data.token!==token||!Array.isArray(data.issues))return;
       cleanup();resolve({issues:data.issues.slice(0,8).map((x:unknown)=>String(x).slice(0,1600)),output:typeof data.output==='string'?data.output.slice(0,12000):undefined,testsPassed:Number(data.testsPassed)||0});
     };
-    timer=setTimeout(()=>{cleanup();resolve({issues:['The browser check did not finish within its time limit.']});},artifact.python?55000:7000);
+    timer=setTimeout(()=>{cleanup();resolve({issues:['The browser check did not finish within its time limit.']});},artifact.python?55000:12000);
     window.addEventListener('message',receive);signal.addEventListener('abort',abort,{once:true});frame.srcdoc=doc;document.body.appendChild(frame);
   });
 }
