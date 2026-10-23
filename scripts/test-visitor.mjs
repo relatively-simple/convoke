@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { SignJWT } from 'jose';
 import { createVisitorToken, createAccountToken, visitorIdentity } from '../lib/visitor-auth.ts';
+import { hashPassword, verifyPassword } from '../lib/password-auth.ts';
 const secret='test-only-secret-'.repeat(4);
 const token=await createVisitorToken(secret);
 const first=await visitorIdentity(token,secret);
@@ -28,4 +29,19 @@ assert.equal(googleIdentity?.email, "user.g@gmail.com");
 assert.equal(googleIdentity?.displayName, "Google User");
 assert.equal(googleIdentity?.provider, "google");
 
-console.log('PASS: stable, separate visitor identities; forged, expired, missing and incorrectly signed tokens rejected.');
+// Password security and cryptographic verification (PBKDF2)
+const passA = "my-secure-password-2026";
+const passB = "incorrect-password";
+const { hash, salt } = await hashPassword(passA);
+assert.ok(hash && hash.length === 64, "PBKDF2 SHA-256 hash must be 64 hex characters");
+assert.ok(salt && salt.length === 32, "Salt must be 32 hex characters");
+assert.equal(await verifyPassword(passA, hash, salt), true, "Correct password must verify successfully");
+assert.equal(await verifyPassword(passB, hash, salt), false, "Incorrect password must be rejected");
+assert.equal(await verifyPassword("", hash, salt), false, "Empty password must be rejected");
+assert.equal(await verifyPassword(passA, "", salt), false, "Empty hash must be rejected");
+
+// Distinct salts for same password
+const { salt: salt2 } = await hashPassword(passA);
+assert.notEqual(salt, salt2, "Each hash must generate a cryptographically random salt");
+
+console.log('PASS: stable, separate visitor identities; forged, expired, missing and incorrectly signed tokens rejected; PBKDF2 password security verified.');

@@ -11,3 +11,8 @@ export const runs = sqliteTable("runs", {
 export const dailyUsage = sqliteTable("daily_usage", {
   owner: text("owner").notNull(), day: text("day").notNull(), calls: integer("calls").notNull().default(0),
 }, table => [primaryKey({columns:[table.owner, table.day]})]);
+export const accounts = sqliteTable("accounts", {
+  id: text("id").primaryKey(), email: text("email").notNull().unique(), name: text("name"),
+  passwordHash: text("password_hash"), salt: text("salt"), provider: text("provider").notNull().default("password"),
+  createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, table => [index("idx_accounts_email").on(table.email)]);
