@@ -58,7 +58,7 @@ export async function readGeneration(response: Response, progress: ProgressSink)
       if (buffer.length > 2000000) throw Error("The response was too large.");
       if (done) { consume(buffer); break; }
     }
-  } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+  } finally { await reader.cancel().catch(() => {}); try { reader.releaseLock(); } catch { /* ignore if already released */ } }
   if (!project) throw Error("The connection closed before completion. Reload to check your saved work.");
   return project;
 }

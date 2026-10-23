@@ -11,7 +11,7 @@ export function json(data: unknown, status = 200) { return Response.json(data, {
 export function errorResponse(error: unknown) {
   if (error instanceof HttpError) return json({ error: error.message }, error.status);
   if (error instanceof Error && /TimeoutError|AbortError/.test(error.name)) return json({error:"The request timed out or was stopped. Please retry. Your last saved version is unchanged."},504);
-  console.error("Workspace operation failed", error instanceof Error ? error.name : "Unknown error");
+  console.error("Workspace operation failed", error instanceof Error ? error.stack || error.message : String(error));
   return json({ error: "Could not save or load your work. Your last saved version is safe. Please try again." }, 503);
 }
 const utf8Decoder = new TextDecoder();

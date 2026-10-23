@@ -128,6 +128,12 @@ Convoke 3.0 is a multi-model AI synthesis workspace and collaboration platform b
 | API-01 | `app/api/generate/route.ts:24` | Medium | Usability / Error Handling | Validation errors for non-prompt fields falsely threw `"Please enter a message of up to 4,000 characters."` | Checked `issue.path` and returned specific validation message for non-prompt fields | Resolved |
 | PERF-01 | `lib/provider-router.ts:60` | High | Performance / Reliability | Premature 15s attempt timeout in `providerAttempt` caused complex coding and canvas generations to fail with 504 timeouts | Scaled timeout to 45s for coding/repair tasks and 25s for text tasks | Resolved |
 | REL-01 | `lib/gemini.ts:67`, `lib/groq.ts:37` | Medium | Reliability | Empty artifact objects `{ html: "" }` returned by LLMs broke schema validation, triggering needless retries and 502/503 errors | Applied `sanitizeEmptyArtifact` before `safeParse` to normalize empty artifacts | Resolved |
+| DB-01 | `app/api/session/route.ts:56,80` | High | Data Integrity | Session login only migrated the `projects` table; associated `runs` and `daily_usage` records were not updated to the new user ID | Migrated `projects`, `runs`, and `daily_usage` atomically in a D1 batch | Resolved |
+| MEM-01 | `lib/runtime-document.ts:60` | Medium | Resource Leak | `URL.createObjectURL` for Python worker blob script was never revoked, leaking memory in long-running sessions | Added `URL.revokeObjectURL(blobUrl)` immediately after worker construction | Resolved |
+| EDGE-01 | `lib/runtime-client.ts:49` | Medium | Correctness / Null Safety | `recordRuntime` performed non-null assertion `project.versions.at(-1)!.id` without verifying versions presence | Added safe guard returning project if `project.versions.at(-1)` is absent | Resolved |
+| LOG-01 | `lib/server.ts:14` | Low | Observability | `console.error` in `errorResponse` logged only `error.name`, discarding stack traces and messages | Logged `error.stack \|\| error.message` for comprehensive diagnosis | Resolved |
+| RETRY-01 | `lib/retry.ts:6-7` | Low | Reliability | `waitForRetry` rejected with `undefined` when `signal.reason` was falsy | Added fallback `new DOMException("The operation was aborted.", "AbortError")` | Resolved |
+| STREAM-01 | `lib/generation-stream.ts:61` | Low | Reliability | Calling `reader.releaseLock()` in `readGeneration` finally block threw unhandled TypeError if already released | Wrapped lock release in safe `try/catch` | Resolved |
 
 ---
 

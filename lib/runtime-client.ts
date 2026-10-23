@@ -46,6 +46,8 @@ export async function testArtifact(artifact:Artifact,signal:AbortSignal):Promise
   });
 }
 export async function recordRuntime(project:Project,report:RuntimeReport,signal:AbortSignal){
-  const response=await fetch('/api/workspace',{method:'POST',signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'runtime',projectId:project.id,revision:project.revision,versionId:project.versions.at(-1)!.id,...report})});
+  const version = project.versions.at(-1);
+  if (!version) return project;
+  const response=await fetch('/api/workspace',{method:'POST',signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'runtime',projectId:project.id,revision:project.revision,versionId:version.id,...report})});
   const data=await response.json() as {project:Project;error?:string};if(!response.ok)throw Error(data.error||'Could not save browser checks');return data.project as Project;
 }

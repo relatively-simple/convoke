@@ -53,7 +53,11 @@ export async function POST(request: Request) {
       // Migrate previous visitor projects to the new Google user
       if (env.DB && currentIdentity?.userId.startsWith("visitor:") && newIdentity?.userId) {
         try {
-          await env.DB.prepare("UPDATE projects SET owner = ? WHERE owner = ?").bind(newIdentity.userId, currentIdentity.userId).run();
+          await env.DB.batch([
+            env.DB.prepare("UPDATE projects SET owner = ? WHERE owner = ?").bind(newIdentity.userId, currentIdentity.userId),
+            env.DB.prepare("UPDATE runs SET owner = ? WHERE owner = ?").bind(newIdentity.userId, currentIdentity.userId),
+            env.DB.prepare("UPDATE daily_usage SET owner = ? WHERE owner = ?").bind(newIdentity.userId, currentIdentity.userId),
+          ]);
         } catch { /* proceed */ }
       }
       const response = json({ ready: true, user: newIdentity });
@@ -77,7 +81,11 @@ export async function POST(request: Request) {
       // Migrate previous visitor projects to the logged-in user
       if (env.DB && currentIdentity?.userId.startsWith("visitor:") && newIdentity?.userId) {
         try {
-          await env.DB.prepare("UPDATE projects SET owner = ? WHERE owner = ?").bind(newIdentity.userId, currentIdentity.userId).run();
+          await env.DB.batch([
+            env.DB.prepare("UPDATE projects SET owner = ? WHERE owner = ?").bind(newIdentity.userId, currentIdentity.userId),
+            env.DB.prepare("UPDATE runs SET owner = ? WHERE owner = ?").bind(newIdentity.userId, currentIdentity.userId),
+            env.DB.prepare("UPDATE daily_usage SET owner = ? WHERE owner = ?").bind(newIdentity.userId, currentIdentity.userId),
+          ]);
         } catch { /* proceed */ }
       }
       const response = json({ ready: true, user: newIdentity });
