@@ -97,9 +97,17 @@ export async function providerAttempt(provider: Provider, key: string, model: st
     if (parsedObj && typeof parsedObj === "object") {
       rawParsed = parsedObj as Record<string, unknown>;
       if (rawParsed.artifact && typeof rawParsed.artifact === "object") {
-        const art = rawParsed.artifact as { html?: string; python?: string };
+        const art = rawParsed.artifact as { html?: string; python?: string; tests?: unknown };
         if (!art.html?.trim() && !art.python?.trim()) {
           rawParsed.artifact = null;
+        } else if (Array.isArray(art.tests)) {
+          art.tests = art.tests
+            .filter((t: unknown): t is { name: string; steps: { action: string; selector: string; value?: string }[] } =>
+              !!t && typeof t === "object" && typeof (t as { name?: unknown }).name === "string" && Array.isArray((t as { steps?: unknown }).steps)
+            )
+            .slice(0, 3);
+        } else {
+          art.tests = undefined;
         }
       }
       if (task === "clarify" && Array.isArray(rawParsed.questions)) {
@@ -153,7 +161,7 @@ export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, re
       // If all candidate models have had 2 attempts, reset attempts for the next round so Convoke keeps trying until an output is obtained!
       if (!hasUntriedModels) {
         const canRetry = activeProviders.some(p => modelsFor(p, task).some(m => !disabledModels.has(p + ":" + m)));
-        if (canRetry) {
+        if (canRetry && attempt < 20) {
           for (const p of activeProviders) {
             for (const m of modelsFor(p, task)) {
               if (!disabledModels.has(p + ":" + m)) modelAttempts.set(p + ":" + m, 0);

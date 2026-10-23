@@ -24,76 +24,26 @@ export async function deliberateVisualization(
   progress: ProgressSink = () => {}
 ): Promise<VisualDeliberationPlan> {
   const cleanPrompt = userPrompt.trim();
-  const isThermal = /\b(heat|thermal|temperature|cold|conduction|diffusion|rod)\b/i.test(cleanPrompt);
 
-  const steps: VisualDeliberationStep[] = isThermal
-    ? [
-        {
-          provider: "Google Gemini",
-          role: "Physical Foundations",
-          message: `Gemini: "Establish the heat diffusion equation and nodal temperature profile for '${cleanPrompt.slice(0, 36)}'. Define thermal conductivities and boundary states."`,
-          progressPercent: 28,
-        },
-        {
-          provider: "Groq",
-          role: "Dynamic Flow Engine",
-          message: `Groq: "A static profile misses the dynamic intuition. Let's render the continuous heat flow in real-time with an animated vector field and dynamic gradient updates."`,
-          progressPercent: 38,
-        },
-        {
-          provider: "NVIDIA NIM",
-          role: "Interactive Agency",
-          message: `NVIDIA: "The heat/cold sections can be selected and changed with real-time sliders, draggable probes, and live temperature readouts."`,
-          progressPercent: 48,
-        },
-        {
-          provider: "Convoke 3.0",
-          role: "Consensus Synthesis",
-          message: `Consensus reached: Implementing multi-model blueprint with interactive boundary controls, animated thermal flow, and live telemetry.`,
-          progressPercent: 56,
-        },
-      ]
-    : [
-        {
-          provider: "Google Gemini",
-          role: "Architectural Foundations",
-          message: `Gemini: "Establish foundational logic, coordinate systems, and data model for '${cleanPrompt.slice(0, 36)}'. Define states and core mechanics."`,
-          progressPercent: 28,
-        },
-        {
-          provider: "Groq",
-          role: "Real-Time Dynamics",
-          message: `Groq: "Implement a smooth 60 FPS simulation loop and dynamic reactive state transitions rather than a static presentation."`,
-          progressPercent: 38,
-        },
-        {
-          provider: "NVIDIA NIM",
-          role: "Interactive Control Surface",
-          message: `NVIDIA: "Add intuitive user controls: real-time parameter sliders, interactive click/drag elements, and a live synchronized readout panel."`,
-          progressPercent: 48,
-        },
-        {
-          provider: "Convoke 3.0",
-          role: "Consensus Synthesis",
-          message: `Consensus reached: Synthesizing multi-model feature blueprint with real-time interactivity, direct manipulation, and high contrast styling.`,
-          progressPercent: 56,
-        },
-      ];
+  // Clear single-model progress step without fake multi-model dialogs or artificial delays
+  progress({
+    phase: "deliberation",
+    provider: "Convoke",
+    model: "Interactive Engine",
+    task: "coding",
+    attempt: 1,
+    message: "Synthesizing interactive architecture, 60 FPS animation loop, and controls…",
+    progressPercent: 35,
+  });
 
-  // Emit progress events with pacing so the user watches the multi-model dialogue unfold
-  for (const step of steps) {
-    progress({
-      phase: "deliberation",
-      provider: step.provider,
-      model: step.role,
-      task: "coding",
-      attempt: 1,
-      message: step.message,
-      progressPercent: step.progressPercent,
-    });
-    // Yield for progressive streaming
-    await new Promise(r => setTimeout(r, 180));
-  }
+  const steps: VisualDeliberationStep[] = [
+    {
+      provider: "Convoke",
+      role: "Interactive Engine",
+      message: "Synthesizing interactive architecture, 60 FPS animation loop, and controls…",
+      progressPercent: 35,
+    },
+  ];
 
   const blueprint = [
     `COLLABORATIVE MULTI-MODEL VISUALIZATION SPECIFICATION for "${cleanPrompt}":`,
