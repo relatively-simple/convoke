@@ -126,6 +126,8 @@ Convoke 3.0 is a multi-model AI synthesis workspace and collaboration platform b
 | LIB-02 | `lib/routing.ts:16`, `lib/free-ai.ts:29,129` | Medium | Correctness | Inconsistent visual prompt regexes omitted keywords like `draw` and `render` in routing and deliberation | Centralized `VISUAL_PROMPT_REGEX` across routing, prompts, and visual deliberation | Resolved |
 | SCHEMA-01 | `lib/fact-check.ts:27`, `lib/second-opinion.ts:19`, `app/api/generate/route.ts:15`, `app/api/workspace/route.ts:11-12` | High | Correctness / Compatibility | `messageId` strictly enforced as UUID in schemas while `Project.messages` uses string ID, breaking fact checks/second opinions on non-UUID message IDs | Relaxed `messageId` to `z.string().min(1).max(128)` across schemas | Resolved |
 | API-01 | `app/api/generate/route.ts:24` | Medium | Usability / Error Handling | Validation errors for non-prompt fields falsely threw `"Please enter a message of up to 4,000 characters."` | Checked `issue.path` and returned specific validation message for non-prompt fields | Resolved |
+| PERF-01 | `lib/provider-router.ts:60` | High | Performance / Reliability | Premature 15s attempt timeout in `providerAttempt` caused complex coding and canvas generations to fail with 504 timeouts | Scaled timeout to 45s for coding/repair tasks and 25s for text tasks | Resolved |
+| REL-01 | `lib/gemini.ts:67`, `lib/groq.ts:37` | Medium | Reliability | Empty artifact objects `{ html: "" }` returned by LLMs broke schema validation, triggering needless retries and 502/503 errors | Applied `sanitizeEmptyArtifact` before `safeParse` to normalize empty artifacts | Resolved |
 
 ---
 

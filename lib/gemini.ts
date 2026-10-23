@@ -1,4 +1,4 @@
-import { type ChatMessage, type Completion, plannerSchema, parseJson } from "./free-ai.ts";
+import { type ChatMessage, type Completion, plannerSchema, parseJson, sanitizeEmptyArtifact } from "./free-ai.ts";
 import { resultSchema } from "./project.ts";
 import { HttpError } from "./errors.ts";
 import type { Task } from "./routing.ts";
@@ -64,7 +64,10 @@ export async function completeGemini(key: string, messages: ChatMessage[], task:
     if (data.promptFeedback?.blockReason || (candidate?.finishReason && !["STOP", "MAX_TOKENS"].includes(candidate.finishReason))) throw new HttpError(422, "Google AI could not answer this request. Try rephrasing it.");
     if (candidate?.finishReason === "MAX_TOKENS") { last = new HttpError(502, "The AI reached its output limit. Ask for a smaller tool or change. Your saved work is unchanged."); continue; }
     const content = candidate?.content?.parts?.filter(p => !p.thought).map(p => p.text || "").join("");
-    try { if (!content || !(task === "clarify" ? plannerSchema : resultSchema).safeParse(parseJson(content)).success) throw Error("Invalid response"); }
+    try {
+      const parsed = sanitizeEmptyArtifact(parseJson(content || ""));
+      if (!content || !(task === "clarify" ? plannerSchema : resultSchema).safeParse(parsed).success) throw Error("Invalid response");
+    }
     catch { last = new HttpError(502, "Google AI returned an incomplete response. Please try a smaller request."); continue; }
     return { content: content!, model, tokens: data.usageMetadata?.totalTokenCount || 0, route: { task, model, reason: `Gemini ${task} route.${index >= AI_RETRY.attemptsPerModel ? " Switched models after three unsuccessful attempts." : index ? ` Succeeded on attempt ${index + 1}.` : ""}` } };
   }

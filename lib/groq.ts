@@ -1,4 +1,4 @@
-import { type ChatMessage, type Completion, plannerSchema, parseJson } from "./free-ai.ts";
+import { type ChatMessage, type Completion, plannerSchema, parseJson, sanitizeEmptyArtifact } from "./free-ai.ts";
 import { resultSchema } from "./project.ts";
 import { HttpError } from "./errors.ts";
 import type { Task } from "./routing.ts";
@@ -34,7 +34,10 @@ export async function completeGroq(key: string, messages: ChatMessage[], task: T
     const choice=data.choices?.[0];
     if(choice?.finish_reason==="length") {last=new HttpError(502,"The AI reached its output limit. Ask for a smaller tool or change. Your saved work is unchanged.");continue;}
     if(!choice?.message?.content){last=new HttpError(502,"Groq returned an empty answer. Please try again.");continue;}
-    try { const parsed=parseJson(choice.message.content);if(!(task==="clarify"?plannerSchema:resultSchema).safeParse(parsed).success)throw new Error("Invalid response"); }
+    try {
+      const parsed = sanitizeEmptyArtifact(parseJson(choice.message.content));
+      if (!(task === "clarify" ? plannerSchema : resultSchema).safeParse(parsed).success) throw new Error("Invalid response");
+    }
     catch {last=new HttpError(502,"The AI returned an incomplete response. Please try again with a smaller request.");continue;}
     return {content:choice.message.content,model,tokens:data.usage?.total_tokens||0,route:{task,model,reason:`Groq ${task} route.${index?" Used the alternative model after the first attempt failed.":""} Task-based selection; not a claim of universal model superiority.`}};
   }

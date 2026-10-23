@@ -57,7 +57,8 @@ export async function providerAttempt(provider: Provider, key: string, model: st
   let response: Response;
   let data: { error?: { message?: string; details?: { retryDelay?: string }[] }; promptFeedback?: { blockReason?: string }; candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] } }[]; choices?: { finish_reason?: string; message?: { content?: string } }[]; usageMetadata?: { totalTokenCount?: number }; usage?: { total_tokens?: number } };
   try {
-    response = await fetcher(url, { method: "POST", headers: gemini ? { "x-goog-api-key": key, "Content-Type": "application/json" } : { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]) });
+    const timeoutMs = (task === "coding" || task === "repair") ? 45000 : 25000;
+    response = await fetcher(url, { method: "POST", headers: gemini ? { "x-goog-api-key": key, "Content-Type": "application/json" } : { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) });
     const raw = await response.text();
     try { data = JSON.parse(raw); } catch { data = {}; }
   } catch {
