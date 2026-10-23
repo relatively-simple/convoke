@@ -13,6 +13,15 @@ export function isFree(model: CatalogModel) {
 }
 export const VISUAL_PROMPT_REGEX = /\b(visual|visualize|visualization|visuals|diagram|chart|graph|plot|animation|simulate|simulation|interactive|canvas|draw|render)\b/i;
 
+export function isCodeOrVisualPrompt(prompt: string): boolean {
+  return VISUAL_PROMPT_REGEX.test(prompt) || /\b(code|coding|build|debug|fix|html|javascript|app|website|calculator|timer|game|widget|dashboard|interactive|canvas|simulate|simulation|demo|gui)\b/i.test(prompt);
+}
+
+export function userRequestedVisualization(prompt: string, mode: Mode): boolean {
+  if (mode === "build") return true;
+  return isCodeOrVisualPrompt(prompt);
+}
+
 export function taskFor(mode: Mode, prompt: string): Task {
   if (mode === "build") return "coding";
   if (VISUAL_PROMPT_REGEX.test(prompt)) return "coding";

@@ -517,12 +517,13 @@
 .work-area {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(380px, 1.25fr);
+  display: flex;
+  position: relative;
   background: var(--bg);
+  overflow: hidden;
 }
 .work-area.canvas-closed {
-  grid-template-columns: minmax(0, 1fr);
+  display: flex;
 }
 .canvas-closed .conversation {
   border-right: 0;
@@ -532,7 +533,8 @@
 }
 
 .conversation {
-  min-width: 0;
+  flex: 1;
+  min-width: 320px;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--separator);
@@ -544,6 +546,46 @@
   overflow-y: auto;
   min-height: 0;
   scrollbar-width: thin;
+}
+
+.workspace-resize-handle {
+  width: 10px;
+  margin-left: -5px;
+  margin-right: -5px;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 25;
+  position: relative;
+  user-select: none;
+  touch-action: none;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+.workspace-resize-handle:hover,
+.work-area.resizing .workspace-resize-handle {
+  background: rgba(16, 185, 129, 0.12);
+}
+.resize-handle-bar {
+  width: 2px;
+  height: 44px;
+  border-radius: 2px;
+  background: var(--separator);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.workspace-resize-handle:hover .resize-handle-bar,
+.work-area.resizing .resize-handle-bar {
+  background: #10b981;
+  height: 72px;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.55);
+}
+.work-area.resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+.work-area.resizing iframe {
+  pointer-events: none !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -1349,12 +1391,28 @@
    9. Canvas Panel & Artifacts
    -------------------------------------------------------------------------- */
 .canvas {
+  width: var(--canvas-width, 50%);
+  min-width: 280px;
+  max-width: 75%;
+  flex-shrink: 0;
   background: var(--bg-sunken);
   display: flex;
   flex-direction: column;
-  min-width: 0;
   min-height: 0;
   height: 100%;
+}
+.canvas-fullscreen {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.canvas-close-btn:hover {
+  color: var(--danger) !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+.topbar-action-active {
+  color: #10b981 !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  background: rgba(16, 185, 129, 0.12) !important;
 }
 .canvas-heading {
   display: flex;
@@ -2544,19 +2602,18 @@
 /* --------------------------------------------------------------------------
    16. Responsive Layout Breakpoints
    -------------------------------------------------------------------------- */
-@media (max-width: 1024px) {
-  .work-area {
-    grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
-  }
-}
-
 @media (max-width: 860px) {
   .work-area {
     display: block;
     position: relative;
   }
+  .workspace-resize-handle {
+    display: none !important;
+  }
   .conversation, .canvas {
     height: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
   }
   .canvas {
     display: none;

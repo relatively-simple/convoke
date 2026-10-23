@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Orbit, Users, Coins, ShieldCheck, Sparkles, ChevronDown } from "lucide-react";
+import { Orbit, Users, Coins, ShieldCheck, Sparkles, ChevronDown, PanelRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Answer } from "@/components/answer";
 import { VisualAnswers } from "@/components/visual-answer";
@@ -24,6 +24,7 @@ interface MessageListProps {
   onApplyCorrection: (messageId: string, correction: string) => void;
   onApplySecondOpinion: (messageId: string, revisionText: string) => void;
   onOpenBoardroom: () => void;
+  onOpenCanvas?: () => void;
 }
 
 export function MessageList({
@@ -40,6 +41,7 @@ export function MessageList({
   onApplyCorrection,
   onApplySecondOpinion,
   onOpenBoardroom,
+  onOpenCanvas,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -133,6 +135,17 @@ export function MessageList({
                     />
                   ) : null}
                   <div className="message-actions">
+                    {m.artifactId && onOpenCanvas && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="canvas-toggle-button"
+                        onClick={onOpenCanvas}
+                        title="Open interactive canvas"
+                      >
+                        <PanelRight size={13} /> View Canvas
+                      </Button>
+                    )}
                     {!m.factCheck && (
                       <Button
                         variant="ghost"

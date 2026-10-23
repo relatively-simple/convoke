@@ -16,6 +16,7 @@ import {
   Minimize2,
   Orbit,
   ChevronLeft,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -39,6 +40,7 @@ interface CanvasPanelProps {
   onDownload: () => void;
   onOpenSettings: () => void;
   onBackToChat?: () => void;
+  onClose?: () => void;
 }
 
 export function CanvasPanel({
@@ -56,6 +58,7 @@ export function CanvasPanel({
   onDownload,
   onOpenSettings,
   onBackToChat,
+  onClose,
 }: CanvasPanelProps) {
   const [device, setDevice] = useState<DevicePreset>("responsive");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -177,6 +180,19 @@ export function CanvasPanel({
           >
             <Download size={17} />
           </Button>
+
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              aria-label="Close canvas"
+              title="Close canvas"
+              className="canvas-close-btn"
+            >
+              <X size={17} />
+            </Button>
+          )}
         </div>
       </div>
 

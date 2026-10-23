@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Orbit,
   Plus,
@@ -92,8 +92,35 @@ export default function Workspace({
   const [mode, setMode] = useState<Mode>("auto");
   const [mobileCanvas, setMobileCanvas] = useState(false);
   const [canvasOverride, setCanvasOverride] = useState<boolean | null>(null);
+  const [canvasWidth, setCanvasWidth] = useState<number>(50);
+  const [isResizing, setIsResizing] = useState(false);
   const [canvasTab, setCanvasTab] = useState("preview");
   const [source, setSource] = useState("");
+  const workAreaRef = useRef<HTMLDivElement>(null);
+
+  const handleResizeStart = (e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    const container = workAreaRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const newWidthPx = rect.right - moveEvent.clientX;
+      const newPercent = (newWidthPx / rect.width) * 100;
+      const clamped = Math.min(75, Math.max(25, newPercent));
+      setCanvasWidth(clamped);
+    };
+
+    const handlePointerUp = () => {
+      setIsResizing(false);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
 
   // Dialog controls
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -410,6 +437,23 @@ export default function Workspace({
               </button>
             )}
 
+            {version && (
+              <button
+                type="button"
+                className={`topbar-action-btn ${showCanvas ? "topbar-action-active" : ""}`}
+                onClick={() => {
+                  const next = !showCanvas;
+                  setCanvasOverride(next);
+                  if (!next) setMobileCanvas(false);
+                }}
+                title={showCanvas ? "Close canvas" : "Open canvas"}
+                aria-label={showCanvas ? "Close canvas" : "Open canvas"}
+              >
+                <PanelRight size={13} />
+                <span className="topbar-action-label">{showCanvas ? "Close canvas" : "Open canvas"}</span>
+              </button>
+            )}
+
             {/* Mobile View Switcher when a canvas exists */}
             {version && (
               <div className="mobile-view-tabs" role="tablist" aria-label="Mobile workspace view">
@@ -452,7 +496,11 @@ export default function Workspace({
           </div>
         </header>
 
-        <div className={`work-area ${mobileCanvas && showCanvas ? "show-canvas" : ""} ${!showCanvas ? "canvas-closed" : ""}`}>
+        <div
+          ref={workAreaRef}
+          className={`work-area ${mobileCanvas && showCanvas ? "show-canvas" : ""} ${!showCanvas ? "canvas-closed" : ""} ${isResizing ? "resizing" : ""}`}
+          style={showCanvas ? ({ "--canvas-width": `${canvasWidth}%` } as React.CSSProperties) : undefined}
+        >
           {/* Conversation Column */}
           <section className="conversation" aria-label="Conversation">
             {hasMessages ? (
@@ -470,6 +518,10 @@ export default function Workspace({
                 onApplyCorrection={(mId, c) => void applyCorrection(mId, c)}
                 onApplySecondOpinion={(mId, rev) => void applySecondOpinion(mId, rev)}
                 onOpenBoardroom={() => setBoardroomOpen(true)}
+                onOpenCanvas={() => {
+                  setCanvasOverride(true);
+                  setMobileCanvas(true);
+                }}
               />
             ) : (
               <div className="conversation-scroll">
@@ -513,24 +565,42 @@ export default function Workspace({
             />
           </section>
 
-          {/* Canvas Column */}
+          {/* Canvas Column with Resize Handle */}
           {showCanvas && (
-            <CanvasPanel
-              project={activeProject}
-              version={version}
-              source={source}
-              dirty={dirty}
-              busy={busy}
-              canvasTab={canvasTab}
-              onSetCanvasTab={setCanvasTab}
-              onSetSource={setSource}
-              onSaveSource={save}
-              onRestoreVersion={(vId) => save({ restoreId: vId }).then(() => {})}
-              onResumeChecks={resumeChecks}
-              onDownload={handleDownload}
-              onOpenSettings={() => setSettingsOpen(true)}
-              onBackToChat={() => setMobileCanvas(false)}
-            />
+            <>
+              <div
+                className="workspace-resize-handle"
+                onPointerDown={handleResizeStart}
+                onDoubleClick={() => setCanvasWidth(50)}
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Drag to resize canvas. Double click to reset to 50%."
+                title="Drag to resize canvas. Double click to reset."
+              >
+                <div className="resize-handle-bar" />
+              </div>
+
+              <CanvasPanel
+                project={activeProject}
+                version={version}
+                source={source}
+                dirty={dirty}
+                busy={busy}
+                canvasTab={canvasTab}
+                onSetCanvasTab={setCanvasTab}
+                onSetSource={setSource}
+                onSaveSource={save}
+                onRestoreVersion={(vId) => save({ restoreId: vId }).then(() => {})}
+                onResumeChecks={resumeChecks}
+                onDownload={handleDownload}
+                onOpenSettings={() => setSettingsOpen(true)}
+                onBackToChat={() => setMobileCanvas(false)}
+                onClose={() => {
+                  setCanvasOverride(false);
+                  setMobileCanvas(false);
+                }}
+              />
+            </>
           )}
         </div>
       </main>

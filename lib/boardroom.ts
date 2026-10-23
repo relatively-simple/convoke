@@ -76,7 +76,7 @@ export async function runBoardroomSession(
   signal: AbortSignal,
   reserveCall: () => Promise<void>,
   progress: ProgressSink = () => {},
-  options: { keys?: ProviderKeys; fetcher?: typeof fetch } = {}
+  options: { keys?: ProviderKeys; fetcher?: typeof fetch; wait?: typeof waitForRetry } = {}
 ): Promise<BoardroomSession> {
   const keys: ProviderKeys = options.keys || (typeof process !== "undefined" && process?.env ? {
     gemini: process.env.GEMINI_API_KEY,
@@ -90,10 +90,16 @@ export async function runBoardroomSession(
     throw new HttpError(503, "No AI providers are connected for the Boardroom session.");
   }
 
-  // Define the members. If multiple providers exist, pick one from each (up to 3).
-  // If only 1 provider exists, pick up to 3 distinct models from that provider.
+  // Define the members. If Groq is available, spread across its 3 distinct models for maximum speed, reliability, and zero cross-provider quota issues.
+  // If Groq is not available, pick from other available providers.
   const members: BoardroomMember[] = [];
-  if (availableProviders.length >= 3) {
+  if (availableProviders.includes("groq")) {
+    members.push(
+      { id: "member-1", provider: "groq", model: "openai/gpt-oss-120b", title: "Lead Counsel (Groq 120B)", role: "Lead Counsel" },
+      { id: "member-2", provider: "groq", model: "qwen/qwen3.8-27b", title: "Domain Specialist (Groq Qwen)", role: "Domain Specialist" },
+      { id: "member-3", provider: "groq", model: "openai/gpt-oss-20b", title: "Risk Reviewer (Groq 20B)", role: "Risk Reviewer" }
+    );
+  } else if (availableProviders.length >= 3) {
     members.push(
       { id: "member-1", provider: "gemini", model: "gemini-3.7-flash", title: "Google Gemini 3.7", role: "Analytical Lead" },
       { id: "member-2", provider: "groq", model: "openai/gpt-oss-120b", title: "Groq GPT-OSS 120B", role: "Systems Architect" },
@@ -120,7 +126,7 @@ export async function runBoardroomSession(
     for (const other of availableProviders) {
       if (other !== p) pKeys[other] = keys[other];
     }
-    return createProviderRouter(pKeys, deadline, reserveCall, progress, { fetcher: options.fetcher, preferredModel });
+    return createProviderRouter(pKeys, deadline, reserveCall, progress, { fetcher: options.fetcher, wait: options.wait, preferredModel });
   };
 
   // -------------------------------------------------------------

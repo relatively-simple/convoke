@@ -72,7 +72,8 @@ export async function providerAttempt(provider: Provider, key: string, model: st
       const daily = response.status === 402 || /per.?day|daily|limit:\s*0\b|credits|insufficient.quota/i.test(JSON.stringify(data.error));
       const header = response.headers.get("retry-after");
       const seconds = header ? (Number.isFinite(Number(header)) ? Number(header) : (Date.parse(header) - Date.now()) / 1000) : Number(data.error?.details?.find(d => d.retryDelay)?.retryDelay?.replace(/s$/, ""));
-      throw new ProviderError(429, daily ? "quota" : "rate_limit", daily ? "The provider's daily quota or credits are exhausted." : "The provider is rate-limiting requests.", Number.isFinite(seconds) && seconds > 0 ? Math.max(5000, seconds * 1000) : 5000, daily ? "provider" : null);
+      const retryMs = Number.isFinite(seconds) && seconds > 0 ? Math.min(Math.max(5000, seconds * 1000), 10000) : 5000;
+      throw new ProviderError(429, daily ? "quota" : "rate_limit", daily ? "The provider's daily quota or credits are exhausted." : "The provider is rate-limiting requests.", retryMs, daily ? "provider" : null);
     }
     if (response.status === 413) throw new ProviderError(413, "context_limit", "This model cannot fit the project context.", 5000, "model");
     if ([400, 422].includes(response.status)) throw new ProviderError(502, "request_rejected", "This model rejected the request format.", 5000, null);
@@ -211,7 +212,11 @@ export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, re
       const isCandidate = (p: Provider, m: string) => {
         if (disabledModels.has(p + ":" + m)) return false;
         const tries = modelAttempts.get(p + ":" + m) || 0;
-        return tries < 2;
+        if (tries >= 2) return false;
+        const remaining = (health.get(p + ":" + m) || 0) - Date.now();
+        // If this model is in an extended cooldown (>5s), skip to another candidate model rather than sleeping
+        if (remaining > 5000) return false;
+        return true;
       };
 
       const modelScore = (p: Provider, m: string) => {
@@ -234,7 +239,7 @@ export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, re
         const model = [...candidateModels].sort((a, b) => modelScore(provider, a) - modelScore(provider, b))[0];
         const remaining = (health.get(provider + ":" + model) || 0) - Date.now();
         if (attempt || remaining > 0) {
-          const delay = Math.max(attempt ? 5000 : 0, remaining);
+          const delay = Math.min(Math.max(attempt ? 5000 : 0, remaining), 5000);
           progress({ phase: "retry", provider: names[provider], model, task, attempt: attempt + 1, message: `Switching to ${names[provider]} · ${model}`, error: last?.message, waitSeconds: Math.ceil(delay / 1000) });
           try { await wait(delay, signal); } catch { throw new HttpError(409, "This request was stopped."); }
         }
@@ -266,7 +271,7 @@ export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, re
           if (error.disable === "provider") disabledProviders.add(provider);
           if (error.disable === "model") disabledModels.add(key);
 
-          health.set(key, Date.now() + Math.max(error.retryMs, error.kind === "timeout" ? 15000 : 5000));
+          health.set(key, Date.now() + Math.min(Math.max(error.retryMs, error.kind === "timeout" ? 10000 : 5000), 10000));
           const errReason = error.kind === "timeout" ? "Server timed out at" : error.kind === "quota" ? "Daily quota reached at" : error.kind === "rate_limit" ? "Rate limit reached at" : "Server not available at";
           progress({ phase: "retry", provider: names[provider], model, task, attempt, message: `${errReason} ${names[provider]}. Switching to next available model…`, error: `${error.kind}: ${error.message}` });
         }
