@@ -103,7 +103,7 @@ export async function runBoardroomSession(
     const p1 = availableProviders[0], p2 = availableProviders[1];
     members.push(
       { id: "member-1", provider: p1, model: p1 === "gemini" ? "gemini-3.7-flash" : "openai/gpt-oss-120b", title: `${p1.toUpperCase()} Lead`, role: "Lead Counsel" },
-      { id: "member-2", provider: p2, model: p2 === "nvidia" ? "deepseek-ai/deepseek-v4.1-flash" : "qwen/qwen3.8-27b", title: `${p2.toUpperCase()} Analyst`, role: "Domain Specialist" },
+      { id: "member-2", provider: p2, model: p2 === "nvidia" ? "deepseek-ai/deepseek-v4.1-flash" : p2 === "gemini" ? "gemini-3.8-flash" : "qwen/qwen3.8-27b", title: `${p2.toUpperCase()} Analyst`, role: "Domain Specialist" },
       { id: "member-3", provider: p1, model: p1 === "gemini" ? "gemini-3.8-flash" : "qwen/qwen3.8-27b", title: `${p1.toUpperCase()} Critic`, role: "Risk Reviewer" }
     );
   } else {
@@ -115,12 +115,12 @@ export async function runBoardroomSession(
   }
 
   let totalTokens = 0;
-  const routerFor = (p: Provider) => {
+  const routerFor = (p: Provider, preferredModel?: string) => {
     const pKeys: ProviderKeys = { [p]: keys[p]! };
     for (const other of availableProviders) {
       if (other !== p) pKeys[other] = keys[other];
     }
-    return createProviderRouter(pKeys, deadline, reserveCall, progress, { fetcher: options.fetcher });
+    return createProviderRouter(pKeys, deadline, reserveCall, progress, { fetcher: options.fetcher, preferredModel });
   };
 
   // -------------------------------------------------------------
@@ -138,7 +138,7 @@ export async function runBoardroomSession(
   const drafts: BoardroomDraft[] = [];
   const draftResults = await Promise.all(
     members.map(async (member) => {
-      const router = routerFor(member.provider as Provider);
+      const router = routerFor(member.provider as Provider, member.model);
       const draftMessages: ChatMessage[] = [
         {
           role: "system",
@@ -191,7 +191,7 @@ export async function runBoardroomSession(
   const reviews: BoardroomReview[] = [];
   const reviewResults = await Promise.all(
     members.map(async (reviewer) => {
-      const router = routerFor(reviewer.provider as Provider);
+      const router = routerFor(reviewer.provider as Provider, reviewer.model);
       // Other perspectives to review
       const peerDrafts = drafts
         .filter(d => d.memberId !== reviewer.id)
@@ -241,7 +241,7 @@ export async function runBoardroomSession(
   });
 
   const chairmanMember = members[0];
-  const chairmanRouter = routerFor(chairmanMember.provider as Provider);
+  const chairmanRouter = routerFor(chairmanMember.provider as Provider, chairmanMember.model);
 
   const synthesisMessages: ChatMessage[] = [
     {

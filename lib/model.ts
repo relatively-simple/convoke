@@ -7,7 +7,7 @@ import type { ProgressSink } from "./ai-progress";
 import { GENERATION_TIMEOUT_MS } from "./retry";
 import type { Comparison } from "./project";
 export async function compareModels(project:Project,prompt:string,mode:Mode,signal:AbortSignal,reserve:()=>Promise<void>,progress:ProgressSink):Promise<Comparison>{
-  const keys={gemini:env.GEMINI_API_KEY,groq:env.GROQ_API_KEY,nvidia:env.NVIDIA_API_KEY};
+  const keys={gemini:env.GEMINI_API_KEY,groq:env.GROQ_API_KEY};
   const deadline=AbortSignal.any([signal,AbortSignal.timeout(GENERATION_TIMEOUT_MS)]);
   const entries=Object.entries(keys).filter(([,key])=>key);
   if(entries.length<2)throw new HttpError(503,"Connect at least two providers to compare answers.");

@@ -165,13 +165,19 @@ export async function providerAttempt(provider: Provider, key: string, model: st
 
 // Health is a short-lived hint within a Worker instance, not a guarantee of availability.
 const cooldown = new Map<string, number>();
-export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, reserve: () => Promise<void>, progress: ProgressSink = () => {}, options: { fetcher?: typeof fetch; wait?: typeof waitForRetry; health?: Map<string, number>; smartRouting?: boolean } = {}) {
+export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, reserve: () => Promise<void>, progress: ProgressSink = () => {}, options: { fetcher?: typeof fetch; wait?: typeof waitForRetry; health?: Map<string, number>; smartRouting?: boolean; preferredModel?: string } = {}) {
   const smartRouting = options.smartRouting !== false;
   const providers = (Object.keys(keys) as Provider[]).filter(p => keys[p] && (["gemini", "groq", "nvidia"] as Provider[]).includes(p));
   const disabledProviders = new Set<Provider>(), disabledModels = new Set<string>();
   const modelAttempts = new Map<string, number>();
   const health = options.health || cooldown, wait = options.wait || waitForRetry;
-  const modelsFor = (p: Provider, t: Task) => providerModels(p, t, smartRouting);
+  const modelsFor = (p: Provider, t: Task) => {
+    const list = providerModels(p, t, smartRouting);
+    if (options.preferredModel && list.includes(options.preferredModel)) {
+      return [options.preferredModel, ...list.filter(m => m !== options.preferredModel)];
+    }
+    return list;
+  };
   return async (messages: ChatMessage[], task: Task): Promise<Completion> => {
     if (!providers.length) throw new HttpError(503, "No AI provider is connected.");
     if (signal.aborted) throw new HttpError(409, "This request was stopped.");

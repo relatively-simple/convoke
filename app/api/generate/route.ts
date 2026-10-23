@@ -84,7 +84,7 @@ async function execute(request: Request, progress: ProgressSink = () => {}) {
     if (body.factCheck) {
       const target = project.messages.find(m => m.id === body.factCheck!.messageId);
       if (!target || target.role !== "assistant") throw new HttpError(404, "The message to fact-check could not be found.");
-      const keys = { groq: env.GROQ_API_KEY, gemini: env.GEMINI_API_KEY, nvidia: env.NVIDIA_API_KEY };
+      const keys = { groq: env.GROQ_API_KEY, gemini: env.GEMINI_API_KEY };
       const deadline = AbortSignal.any([request.signal, AbortSignal.timeout(GENERATION_TIMEOUT_MS)]);
       const reserve = async () => {
         const running = await db().prepare("SELECT id FROM projects WHERE id = ? AND owner = ? AND locked_by = ? AND locked_until > ?").bind(project!.id, userId, runId, Date.now()).first();
@@ -102,7 +102,7 @@ async function execute(request: Request, progress: ProgressSink = () => {}) {
     if (body.secondOpinion) {
       const target = project.messages.find(m => m.id === body.secondOpinion!.messageId);
       if (!target || target.role !== "assistant") throw new HttpError(404, "The message to review could not be found.");
-      const keys = { groq: env.GROQ_API_KEY, gemini: env.GEMINI_API_KEY, nvidia: env.NVIDIA_API_KEY };
+      const keys = { groq: env.GROQ_API_KEY, gemini: env.GEMINI_API_KEY };
       const reserve = async () => {
         const running = await db().prepare("SELECT id FROM projects WHERE id = ? AND owner = ? AND locked_by = ? AND locked_until > ?").bind(project!.id, userId, runId, Date.now()).first();
         if (!running || request.signal.aborted) throw new HttpError(409, "This second opinion was stopped.");
@@ -121,7 +121,7 @@ async function execute(request: Request, progress: ProgressSink = () => {}) {
         const running = await db().prepare("SELECT id FROM projects WHERE id = ? AND owner = ? AND locked_by = ? AND locked_until > ?").bind(project!.id, userId, runId, Date.now()).first();
         if (!running || request.signal.aborted) throw new HttpError(409, "This boardroom deliberation was stopped.");
       };
-      const keys = { groq: env.GROQ_API_KEY, gemini: env.GEMINI_API_KEY, nvidia: env.NVIDIA_API_KEY };
+      const keys = { groq: env.GROQ_API_KEY, gemini: env.GEMINI_API_KEY };
       const displayedPrompt = project.confirmedTask?.prompt || body.prompt;
       const session = await runBoardroomSession(project, displayedPrompt, request.signal, reserve, progress, { keys });
       project.boardroom = session;
