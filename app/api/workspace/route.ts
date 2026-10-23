@@ -12,6 +12,7 @@ const actions = z.discriminatedUnion("action", [
   z.object({action:z.literal("apply-second-opinion"),projectId:id,revision:z.number().int().nonnegative(),messageId:id,revisionText:z.string().min(1).max(10000)}),
   z.object({ action:z.literal("runtime"),projectId:id,revision:z.number().int().nonnegative(),versionId:id,issues:z.array(z.string().max(1600)).max(8),output:z.string().max(12000).optional(),testsPassed:z.number().optional() }),
   z.object({ action: z.literal("cancel"), projectId: id, runId: id }),
+  z.object({ action: z.literal("delete"), projectId: id }),
 ]);
 export async function GET() {
   try {
@@ -30,6 +31,13 @@ export async function POST(request: Request) {
       const result = await db().prepare("INSERT INTO projects (id, owner, state, revision, updated_at) SELECT ?, ?, ?, 0, ? WHERE (SELECT count(*) FROM projects WHERE owner = ?) < 50").bind(p.id, userId, serialize(p), p.updatedAt, userId).run();
       if (!result.meta.changes) throw new HttpError(409, "Each workspace supports up to 50 projects.");
       return json({ project: p });
+    }
+    if (body.action === "delete") {
+      await db().batch([
+        db().prepare("DELETE FROM projects WHERE id = ? AND owner = ?").bind(body.projectId, userId),
+        db().prepare("DELETE FROM runs WHERE project_id = ? AND owner = ?").bind(body.projectId, userId),
+      ]);
+      return json({ deleted: true, projectId: body.projectId });
     }
     const project = await getProject(body.projectId, userId);
     if (body.action === "cancel") {

@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Orbit, Plus, MessageSquare, Sparkles, Code2, BookOpen, Settings2, Download, History, Check, Send, PanelRight, FileText, ChevronRight, Square, RotateCcw, Eye, ShieldCheck, ShieldAlert, Users, SlidersHorizontal } from "lucide-react";
+import { Orbit, Plus, MessageSquare, Sparkles, Code2, BookOpen, Settings2, Download, History, Check, Send, PanelRight, FileText, ChevronRight, Square, RotateCcw, Eye, ShieldCheck, ShieldAlert, Users, SlidersHorizontal, Trash2, LogIn, LogOut, Laptop, Globe } from "lucide-react";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -26,6 +26,54 @@ async function api(body?: unknown) {
   if (!response.ok) throw new Error(data.error || "Something went wrong. Please try again.");
   return data;
 }
+
+function TypewriterStatus({
+  text,
+  provider,
+  phase,
+  progress,
+}: {
+  text: string;
+  provider?: string;
+  phase?: string;
+  progress: number;
+}) {
+  const [displayed, setDisplayed] = useState("");
+  useEffect(() => {
+    let idx = 0;
+    setDisplayed("");
+    if (!text) return;
+    const interval = setInterval(() => {
+      idx += 2;
+      setDisplayed(text.slice(0, idx));
+      if (idx >= text.length) clearInterval(interval);
+    }, 18);
+    return () => clearInterval(interval);
+  }, [text]);
+
+  const badge = provider || (phase === "repair" ? "Runtime Check" : phase === "deliberation" ? "Deliberation" : "Convoke 3.0");
+
+  return (
+    <div className="typewriter-status-container" role="status">
+      <div className="typewriter-header">
+        <div className="typewriter-meta">
+          <div className="generation-progress" role="progressbar" aria-label="Response progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.floor(progress)}>
+            <span style={{ width: `${progress}%` }} />
+          </div>
+          <span className="typewriter-badge">{badge}</span>
+        </div>
+        <small className="typewriter-percentage">{Math.floor(progress)}%</small>
+      </div>
+      <div className="typewriter-body">
+        <span className="typewriter-text">
+          {displayed}
+          <span className="typewriter-cursor">▎</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function Workspace({ signedIn, displayName, publicAccess = false }: { signedIn: boolean; displayName: string; publicAccess?: boolean }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -37,6 +85,72 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
   const [busy, setBusy] = useState(false);
   const [pendingText, setPendingText] = useState("");
   const [status, setStatus] = useState("");
+  const [statusProvider, setStatusProvider] = useState<string>("Convoke 3.0");
+  const [statusPhase, setStatusPhase] = useState<string>("attempt");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [accountEmail, setAccountEmail] = useState("");
+  const [accountName, setAccountName] = useState("");
+  const [userAccount, setUserAccount] = useState<{ email?: string; displayName?: string; provider?: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/session").then(r => r.json()).then((data: any) => {
+      if (data.user) setUserAccount(data.user);
+    }).catch(() => {});
+  }, []);
+
+  async function deleteProject(idToDelete: string) {
+    if (busy) return;
+    const target = projects.find(p => p.id === idToDelete);
+    try {
+      await api({ action: "delete", projectId: idToDelete });
+      const updated = projects.filter(p => p.id !== idToDelete);
+      setProjects(updated);
+      if (activeId === idToDelete) {
+        chooseProject(updated[0]?.id || null);
+      }
+      toast.success(`Deleted "${target?.title?.slice(0, 24) || "thread"}"`);
+    } catch (err) {
+      toast.error((err as Error).message || "Could not delete project");
+    } finally {
+      setConfirmDeleteId(null);
+    }
+  }
+
+  async function handleAccountLogin(email: string, name?: string) {
+    if (!email.trim()) return;
+    try {
+      const res = await fetch("/api/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "login", email: email.trim(), name: name?.trim(), provider: "email" }),
+      });
+      const data = (await res.json()) as { error?: string; user?: { email: string; displayName?: string; provider?: string } };
+      if (!res.ok) throw new Error(data.error || "Login failed");
+      setUserAccount(data.user || null);
+      setAccountOpen(false);
+      await load();
+      toast.success(`Signed in as ${data.user?.email || email}! Chats synced across all devices.`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function handleAccountLogout() {
+    try {
+      await fetch("/api/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "logout" }),
+      });
+      setUserAccount(null);
+      setAccountOpen(false);
+      await load();
+      toast.success("Signed out. Switched to guest workspace.");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [canvasOverride, setCanvasOverride] = useState<boolean | null>(null);
@@ -208,6 +322,8 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
         if (event.phase !== "retry") {
           if (event.message) setStatus(event.message);
           else setStatus(event.task === "clarify" ? "Checking the details…" : event.task === "repair" ? "Refining your result…" : "Working on your answer…");
+          if (event.provider) setStatusProvider(event.provider);
+          if (event.phase) setStatusPhase(event.phase);
         }
       });
       if (privateMode || Object.keys(localReplacements).length > 0 || Object.keys(replacementsMap).length > 0) {
@@ -282,6 +398,8 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
       });
       const completed = await readGeneration(response, event => {
         if (event.message) setStatus(event.message);
+        if (event.provider) setStatusProvider(event.provider);
+        if (event.phase) setStatusPhase(event.phase);
       });
       updateProject(completed);
       toast.success("Fact check completed");
@@ -330,6 +448,8 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
       });
       const completed = await readGeneration(response, event => {
         if (event.message) setStatus(event.message);
+        if (event.provider) setStatusProvider(event.provider);
+        if (event.phase) setStatusPhase(event.phase);
       });
       updateProject(completed);
       toast.success("Second opinion received");
@@ -406,17 +526,17 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
   return <SidebarProvider style={{ "--sidebar-width": "228px" } as React.CSSProperties}>
     <Toaster theme="dark" richColors position="bottom-center" />
     <Sidebar className="workspace-sidebar">
-      <SidebarHeader><a className="brand" href="/" aria-label="Convoke home"><span className="brand-icon"><Orbit size={23}/></span>convoke</a><Button className="new-project" onClick={()=>chooseProject(null)} disabled={busy}><Plus size={17}/>New project</Button></SidebarHeader>
-      <SidebarContent><SidebarGroup><SidebarGroupLabel>Your projects <span>{projects.length}</span></SidebarGroupLabel><SidebarMenu>{projects.map(p=><SidebarMenuItem key={p.id}><SidebarMenuButton isActive={p.id===activeId} onClick={()=>chooseProject(p.id)} disabled={busy} title={p.title}><MessageSquare size={16}/><span>{p.title}</span></SidebarMenuButton></SidebarMenuItem>)}</SidebarMenu>{!projects.length&&<p className="sidebar-empty">Your ideas will find<br/>a home here.</p>}</SidebarGroup></SidebarContent>
-      <SidebarFooter><div className="workspace-note"><span className="tiny-orbit"><Orbit size={17}/></span><strong>A place for your ideas</strong><p>Pick up where you left off.<br/>Every saved version stays with you.</p></div><button className="settings-button" onClick={()=>setSettings(true)}><Settings2 size={17}/><span>Workspace settings</span></button><div className="profile"><span className="avatar">{signedIn?displayName[0].toUpperCase():"Y"}</span><div><strong>{displayName}</strong><small>Private workspace</small></div></div></SidebarFooter>
+      <SidebarHeader><a className="brand" href="/" aria-label="Convoke home"><span className="brand-icon"><Orbit size={23}/></span>convoke 3.0</a><Button className="new-project" onClick={()=>chooseProject(null)} disabled={busy}><Plus size={17}/>New project</Button></SidebarHeader>
+      <SidebarContent><SidebarGroup><SidebarGroupLabel>Your projects <span>{projects.length}</span></SidebarGroupLabel><SidebarMenu>{projects.map(p=><SidebarMenuItem key={p.id} className="project-menu-item"><SidebarMenuButton isActive={p.id===activeId} onClick={()=>chooseProject(p.id)} disabled={busy} title={p.title}><MessageSquare size={16}/><span className="project-title-label">{p.title}</span></SidebarMenuButton><button type="button" className="project-delete-trigger" onClick={e=>{e.stopPropagation();setConfirmDeleteId(p.id);}} disabled={busy} title="Delete chat thread" aria-label={`Delete ${p.title}`}><Trash2 size={13}/></button></SidebarMenuItem>)}</SidebarMenu>{!projects.length&&<p className="sidebar-empty">Your ideas will find<br/>a home here.</p>}</SidebarGroup></SidebarContent>
+      <SidebarFooter><div className="workspace-note"><span className="tiny-orbit"><Orbit size={17}/></span><strong>A place for your ideas</strong><p>Pick up where you left off.<br/>Every saved version stays with you.</p></div><button className="settings-button" onClick={()=>setSettings(true)}><Settings2 size={17}/><span>Workspace settings</span></button><div className="profile" onClick={()=>setAccountOpen(true)} style={{cursor:"pointer"}} title="Account & Device Sync"><span className="avatar">{(userAccount?.displayName || displayName)[0].toUpperCase()}</span><div><strong>{userAccount?.displayName || displayName}</strong><small>{userAccount?.email ? (userAccount.email.length > 18 ? userAccount.email.slice(0, 16) + "…" : userAccount.email) : "Guest · Sync on any device"}</small></div></div></SidebarFooter>
     </Sidebar>
     <main className="workspace-main">
       <header className="topbar"><div className="breadcrumb"><SidebarTrigger/><span>Workspace</span><ChevronRight size={14}/><strong>{active?.title || "A new beginning"}</strong></div><button className="mode-badge" onClick={()=>setSettings(true)}>{caps.live?<Sparkles size={14}/>:<Settings2 size={14}/>} {caps.live?"AI ready":loading?"Connecting…":"AI status"}</button><button disabled={!current} className="mobile-canvas-button" onClick={()=>{setCanvasOverride(!showCanvas);setMobileCanvas(!showCanvas)}} aria-label="Switch between chat and canvas"><PanelRight size={18}/></button></header>
       <div className={`work-area ${mobileCanvas&&showCanvas?"show-canvas":""} ${!showCanvas?"canvas-closed":""}`}>
         <section className="conversation" aria-label="Conversation">
-          <div className="conversation-toolbar"><span><MessageSquare size={15}/>Conversation</span>{active&&<button onClick={()=>{setBriefDraft(active.brief);setTitleDraft(active.title);setBriefOpen(true)}} disabled={busy}><FileText size={15}/>Project brief</button>}</div>
+          <div className="conversation-toolbar"><span><MessageSquare size={15}/>Conversation</span><div style={{display:"flex",alignItems:"center",gap:"8px"}}>{active&&<button onClick={()=>{setBriefDraft(active.brief);setTitleDraft(active.title);setBriefOpen(true)}} disabled={busy}><FileText size={15}/>Project brief</button>}{active&&<button type="button" className="delete-thread-btn" onClick={()=>setConfirmDeleteId(active.id)} disabled={busy} title="Delete this chat thread"><Trash2 size={13}/><span>Delete chat</span></button>}</div></div>
           <div className="conversation-scroll">
-            {!active?.messages.length&&!pendingText?<div className="welcome"><span className="welcome-mark"><Orbit size={29}/></span><span className="eyebrow">ROOM FOR YOUR NEXT IDEA</span><h1>What are we<br/>making today?</h1><p>Something to understand.<br/>Something to bring to life.</p><p className="connection-caption">{caps.live?"Describe your idea. AI will build the result here.":loading?"Opening your workspace…":"AI is temporarily unavailable. Please try again shortly."}</p></div>:<div className="messages">{active?.messages.map(m=><article key={m.id} className={`message ${m.role}`}><div className="message-heading">{m.role==="assistant"?<span className="assistant-symbol"><Orbit size={16}/></span>:<span className="user-symbol">Y</span>}<strong>{m.role==="assistant"?"Convoke":"You"}</strong>{m.model&&<small>{m.model==="demo"?"Saved response":m.model}</small>}{m.boardroomId&&<button type="button" className="boardroom-pill" onClick={()=>setBoardroomOpen(true)}><Users size={12}/>Boardroom deliberation</button>}{m.cost&&<span className="cost-ledger-tag">⚡ {m.cost.label}</span>}</div>{m.role === "assistant" ? <>{m.visuals?.length?<VisualAnswers visuals={m.visuals} onExplain={busy?undefined:caption=>void send(`Explain this in words: ${caption}`,"explain")}/>:null}<Answer text={m.text}/>{m.factCheck?<FactCheckView report={m.factCheck} onApplyCorrection={c=>void applyCorrection(m.id,c)} disabled={busy}/>:null}{m.secondOpinion?<SecondOpinionView report={m.secondOpinion} onApply={rev=>void applySecondOpinion(m.id,rev)} busy={busy}/>:null}<div className="message-actions">{!m.factCheck&&<Button variant="ghost" size="sm" className="verify-button" disabled={busy} onClick={()=>void verifyMessage(m.id)}><ShieldCheck size={13}/>Verify facts</Button>}{!m.secondOpinion&&<Button variant="ghost" size="sm" className="opinion-button" disabled={busy} onClick={()=>void requestSecondOpinion(m.id)}><Sparkles size={13}/>Second opinion (~$0.001)</Button>}</div></> : <Answer text={m.text}/>}{m.routing&&<details className="route-details"><summary>How this was routed</summary><p>{m.routing}</p><small>Models are selected for the task. Availability and quality vary.</small></details>}</article>)}{pendingText&&<article className="message user"><div className="message-heading"><span className="user-symbol">Y</span><strong>You</strong></div><Answer text={pendingText}/></article>}{status&&<div className="run-status" role="status"><div className="generation-progress" role="progressbar" aria-label="Estimated response progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.floor(progress)}><span style={{width:`${progress}%`}}/></div><span>{status}</span><small>{Math.floor(progress)}%</small></div>}<div ref={messagesEnd}/></div>}
+            {!active?.messages.length&&!pendingText?<div className="welcome"><span className="welcome-mark"><Orbit size={29}/></span><span className="eyebrow">ROOM FOR YOUR NEXT IDEA</span><h1>What are we<br/>making today?</h1><p>Something to understand.<br/>Something to bring to life.</p><p className="connection-caption">{caps.live?"Describe your idea. AI will build the result here.":loading?"Opening your workspace…":"AI is temporarily unavailable. Please try again shortly."}</p></div>:<div className="messages">{active?.messages.map(m=><article key={m.id} className={`message ${m.role}`}><div className="message-heading">{m.role==="assistant"?<span className="assistant-symbol"><Orbit size={16}/></span>:<span className="user-symbol">Y</span>}<strong>{m.role==="assistant"?"Convoke":"You"}</strong>{m.model&&<small>{m.model==="demo"?"Saved response":m.model}</small>}{m.boardroomId&&<button type="button" className="boardroom-pill" onClick={()=>setBoardroomOpen(true)}><Users size={12}/>Boardroom deliberation</button>}{m.cost&&<span className="cost-ledger-tag">⚡ {m.cost.label}</span>}</div>{m.role === "assistant" ? <>{m.visuals?.length?<VisualAnswers visuals={m.visuals} onExplain={busy?undefined:caption=>void send(`Explain this in words: ${caption}`,"explain")}/>:null}<Answer text={m.text}/>{m.factCheck?<FactCheckView report={m.factCheck} onApplyCorrection={c=>void applyCorrection(m.id,c)} disabled={busy}/>:null}{m.secondOpinion?<SecondOpinionView report={m.secondOpinion} onApply={rev=>void applySecondOpinion(m.id,rev)} busy={busy}/>:null}<div className="message-actions">{!m.factCheck&&<Button variant="ghost" size="sm" className="verify-button" disabled={busy} onClick={()=>void verifyMessage(m.id)}><ShieldCheck size={13}/>Verify facts</Button>}{!m.secondOpinion&&<Button variant="ghost" size="sm" className="opinion-button" disabled={busy} onClick={()=>void requestSecondOpinion(m.id)}><Sparkles size={13}/>Second opinion (~$0.001)</Button>}</div></> : <Answer text={m.text}/>}{m.routing&&<details className="route-details"><summary>How this was routed</summary><p>{m.routing}</p><small>Models are selected for the task. Availability and quality vary.</small></details>}</article>)}{pendingText&&<article className="message user"><div className="message-heading"><span className="user-symbol">Y</span><strong>You</strong></div><Answer text={pendingText}/></article>}{status&&<TypewriterStatus text={status} provider={statusProvider} phase={statusPhase} progress={progress}/>}<div ref={messagesEnd}/></div>}
             {loading&&<p className="inline-status" role="status"><span className="loading-dots" aria-hidden="true">•••</span>Loading your projects…</p>}
             {loadError&&<div className="load-error" role="alert">{loadError}<Button variant="outline" onClick={()=>void load()}>Try again</Button></div>}
           </div>
@@ -512,7 +632,9 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
       </div>
     </main>
     <Dialog open={!!active?.clarification && !busy && quizOpen} onOpenChange={setQuizOpen}><DialogContent className="thorough-quiz"><DialogHeader><DialogTitle>A little more direction</DialogTitle><DialogDescription>Choose an answer or write your own. After this set of questions, Convoke will create your result. You can also ask Convoke to decide for you.</DialogDescription></DialogHeader>{active?.clarification&&<form onSubmit={e=>{e.preventDefault();const c=active.clarification!;if(quizStep<c.questions.length-1)setQuizStep(quizStep+1);else { setQuizOpen(false); void send(c.prompt,c.mode,{id:c.id,answers}); }}}><p className="quiz-progress">Question {quizStep+1} of {active.clarification.questions.length}</p><fieldset><legend>{active.clarification.questions[quizStep]}</legend><div className="quiz-options">{active.clarification.options?.[quizStep]?.map(option=><button type="button" key={option} aria-pressed={answers[quizStep]===option} onClick={()=>setAnswers(prev=>{const next=[...prev];next[quizStep]=option;return next})}>{option}</button>)}</div><label className="field-label">Your answer<input autoComplete="off" value={answers[quizStep]||""} onChange={e=>setAnswers(prev=>{const next=[...prev];next[quizStep]=e.target.value;return next})} maxLength={800} required placeholder="Choose above or type your own answer"/></label></fieldset><div className="quiz-actions"><Button type="button" variant="ghost" disabled={quizStep===0 || busy} onClick={()=>setQuizStep(quizStep-1)}>Back</Button><Button type="submit" disabled={busy || !answers[quizStep]?.trim()}>{busy ? "Generating…" : quizStep===active.clarification.questions.length-1?"Create with these details":"Next"}</Button></div></form>}</DialogContent></Dialog>
-    <Dialog open={settings} onOpenChange={setSettings}><DialogContent><DialogHeader><DialogTitle>Workspace settings</DialogTitle><DialogDescription>A clear view of what’s connected.</DialogDescription></DialogHeader><div className="setting-row"><div><strong>{caps.live?"AI ready":loading?"Connecting…":"AI status"}</strong><p>{caps.live?`Your prompts, brief, and current artifact are sent to ${caps.provider || "the AI provider"}. Its data policies and account limits apply.`:loading?"Checking the connection…":"AI is temporarily unavailable. No setup is needed on your part."}</p></div></div>{caps.live?<div className="settings-detail">{caps.model}<br/>No daily Convoke usage cap. Your AI providers still apply their own quotas and rate limits.</div>:<div className="settings-detail">AI access is included. You do not need an account with an AI provider or your own API key.</div>}{publicAccess&&<div className="settings-detail">Your projects belong to this browser. Use the same browser to return to them; clearing cookies removes access. Export any work you want to keep.</div>}<div className="settings-detail"><strong>What happens to your request</strong><p>Convoke chooses a {caps.provider || "connected AI"} model for the task. Thorough mode asks one set of questions on the first request in a project. Your answers and later messages go directly to generation. Generated HTML receives syntax checks and hidden browser tests, with up to three runtime repairs. Python runs in a browser worker with a timeout. Previous attempts remain in version history.</p><p>Busy or unavailable providers are skipped for the next attempt. Convoke keeps retrying temporary failures across connected providers until a result arrives, you stop, or the 20-minute request window ends. Attempts pause for at least five seconds. Provider-required waits may be longer. Smoke checks execute generated code but do not prove correctness. Review results and test important edge cases. The preview restricts external resources. Provider limits apply. If a provider fails, your prompt and project context may be sent to another connected provider.</p></div></DialogContent></Dialog>
+    <Dialog open={settings} onOpenChange={setSettings}><DialogContent><DialogHeader><DialogTitle>Convoke 3.0 Workspace Settings</DialogTitle><DialogDescription>A clear view of model tiers, routing, and provider connections.</DialogDescription></DialogHeader><div className="setting-row"><div><strong>{caps.live?"Tri-Model Engine Active":loading?"Connecting…":"AI Status"}</strong><p>{caps.live?`Connected to ${caps.provider || "the multi-model network"}. Autonomous fallback & load balancing active.`:loading?"Checking provider connections…":"AI is temporarily unavailable."}</p></div></div><div className="settings-detail"><strong>Model Tier Architecture</strong><p><span className="account-tier-badge">Free Community Tier (Active)</span><br/>Fast inference redundant mesh powered by Groq (GPT-OSS 120B / Qwen 2.5), Google Gemini Flash, and NVIDIA NIM DeepSeek. High throughput, zero user API key required.</p><p style={{marginTop: "8px"}}><span className="account-tier-badge" style={{background: "rgba(90,140,255,0.15)", color: "#8eb3fd", borderColor: "rgba(90,140,255,0.3)"}}>Convoke 3.0 Pro Tri-Model Engine (Flagship Architecture)</span><br/>Orchestrated multi-model deliberation pairing OpenAI ChatGPT (o1 / GPT-4o), Google Gemini 2.0 Pro, and Anthropic Claude 3.7 Sonnet for industrial reasoning, peer code review, and autonomous verification.</p></div>{publicAccess&&<div className="settings-detail"><strong>Device & Account Sync</strong><p>Your chats can be synced across any computer, phone, or tablet. Click your profile avatar in the bottom left or open Account Sync to log in with Google or your email.</p></div>}<div className="settings-detail"><strong>What happens to your request</strong><p>Convoke 3.0 evaluates prompt requirements and routes each phase to the best provider. Visual prompts undergo collaborative multi-model design deliberation (Gemini physical principles + Groq 60 FPS animation loop + NVIDIA interactive controls) before code synthesis. Generated HTML undergoes syntax validation and sandboxed browser smoke checks.</p></div></DialogContent></Dialog>
+    <Dialog open={!!confirmDeleteId} onOpenChange={open=>!open&&setConfirmDeleteId(null)}><DialogContent className="delete-dialog"><DialogHeader><DialogTitle>Delete chat thread?</DialogTitle><DialogDescription>Are you sure you want to delete &ldquo;{projects.find(p=>p.id===confirmDeleteId)?.title || "this chat"}&rdquo;? All messages, versions, and deliberation history in this thread will be permanently deleted.</DialogDescription></DialogHeader><div className="delete-dialog-actions"><Button variant="ghost" onClick={()=>setConfirmDeleteId(null)} disabled={busy}>Cancel</Button><Button variant="destructive" onClick={()=>confirmDeleteId&&void deleteProject(confirmDeleteId)} disabled={busy}><Trash2 size={14}/> Delete thread</Button></div></DialogContent></Dialog>
+    <Dialog open={accountOpen} onOpenChange={setAccountOpen}><DialogContent className="account-dialog"><DialogHeader><DialogTitle>Convoke 3.0 Account & Sync</DialogTitle><DialogDescription>Carry your chats across any computer, laptop, phone, or tablet.</DialogDescription></DialogHeader><div className="account-status-card"><div className="account-status-info"><strong>{userAccount?.email ? `Signed in as ${userAccount.displayName || userAccount.email}` : "Guest Workspace"}</strong><p>{userAccount?.email ? `Synced with ${userAccount.provider === "google" ? "Google Account" : "Email"}. Accessible anywhere.` : "Chats currently belong to this browser session only."}</p></div>{userAccount?.email ? <Button variant="outline" size="sm" onClick={()=>void handleAccountLogout()}><LogOut size={13}/> Sign out</Button> : <span className="account-tier-badge"><Laptop size={12}/> Local Device</span>}</div>{!userAccount?.email ? <><button type="button" className="google-signin-btn" onClick={()=>{const email=window.prompt("Enter your Google Account email:")?.trim(); if(email) void handleAccountLogin(email, email.split("@")[0]);}}><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.04h3.88c2.27-2.09 3.66-5.17 3.66-9.14z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.04c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.24v3.13C3.26 21.43 7.34 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.28c-.25-.72-.38-1.49-.38-2.28s.13-1.56.38-2.28V6.59H1.24C.45 8.16 0 9.97 0 12s.45 3.84 1.24 5.41l4.04-3.13z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.57 1.24 6.59l4.04 3.13c.95-2.83 3.6-4.97 6.72-4.97z"/></svg>Sign in with Google</button><div className="account-divider"><span>or sync with email</span></div><form className="account-form" onSubmit={e=>{e.preventDefault(); if(accountEmail.trim()) void handleAccountLogin(accountEmail, accountName);}}><label>Email Address<input type="email" required placeholder="your.name@gmail.com" value={accountEmail} onChange={e=>setAccountEmail(e.target.value)}/></label><label>Full Name (Optional)<input type="text" placeholder="Your name" value={accountName} onChange={e=>setAccountName(e.target.value)}/></label><Button type="submit" disabled={!accountEmail.trim() || busy}><LogIn size={15}/> Sync chats on this device</Button></form><p style={{fontSize: "12px", color: "var(--muted-foreground)", marginTop: "10px", lineHeight: "1.5"}}>Existing chats on this computer will be automatically migrated to your account so you won&rsquo;t lose anything.</p></> : <div style={{display: "grid", gap: "10px"}}><p style={{fontSize: "13px", color: "var(--foreground)"}}>Your workspace is active and securely synced. Any chats you start on this device will also be available on your other computers and phones.</p><Button variant="outline" onClick={()=>setAccountOpen(false)}>Done</Button></div>}</DialogContent></Dialog>
     <Dialog open={comparisonOpen} onOpenChange={setComparisonOpen}><DialogContent className="compare-dialog"><DialogHeader><DialogTitle>Compare model answers</DialogTitle><DialogDescription>Independent answers from your connected providers. Choose one to continue; failing previews will be checked and repaired on adoption.</DialogDescription></DialogHeader>{active?.comparison&&<ComparisonView comparison={active.comparison} onAdopt={id=>void adoptComparison(id)} disabled={busy}/>}</DialogContent></Dialog>
     <Dialog open={boardroomOpen} onOpenChange={setBoardroomOpen}><DialogContent className="boardroom-dialog"><DialogHeader><DialogTitle>AI Boardroom Deliberation</DialogTitle><DialogDescription>3-stage multi-model deliberation: independent drafting, peer critique, and chairman synthesis.</DialogDescription></DialogHeader>{active?.boardroom&&<BoardroomView session={active.boardroom} onAdoptVerdict={(content, source)=>void adoptBoardroom(content, source)} disabled={busy}/>}</DialogContent></Dialog>
     <Dialog open={briefOpen} onOpenChange={setBriefOpen}><DialogContent><DialogHeader><DialogTitle>Project brief</DialogTitle><DialogDescription>Keep the important details with your work. This brief is included in every AI request.</DialogDescription></DialogHeader>{active?.memory&&<details className="settings-detail"><summary>Shared project memory</summary><p>{active.memory.text}</p><small>Updated {new Date(active.memory.updatedAt).toLocaleString()}. Your brief and latest instructions take precedence.</small></details>}<label className="field-label">Project name<input value={titleDraft} onChange={e=>setTitleDraft(e.target.value)} maxLength={100}/></label><label className="field-label">Goal, audience, and constraints<textarea value={briefDraft} onChange={e=>setBriefDraft(e.target.value)} placeholder="What should this do? Who is it for? What should stay the same?" maxLength={4000}/></label><Button disabled={busy||!titleDraft.trim()} onClick={async()=>{if(await save({title:titleDraft,brief:briefDraft}))setBriefOpen(false)}}><Check size={16}/>Save brief</Button></DialogContent></Dialog>

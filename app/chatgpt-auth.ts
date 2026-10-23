@@ -9,6 +9,8 @@ export type ChatGPTUser = {
   displayName: string;
   email: string;
   fullName: string | null;
+  picture?: string;
+  provider?: "google" | "email" | "visitor";
 };
 
 const USER_ID_HEADER = "oai-authenticated-user-id";

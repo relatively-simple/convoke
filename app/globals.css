@@ -454,4 +454,232 @@ body{background:#070809}
   .thorough-control small{display:none}
 }
 
+/* Convoke 3.0: Project thread delete */
+.project-menu-item {
+  position: relative;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+}
+.project-title-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-delete-trigger {
+  background: transparent;
+  border: none;
+  padding: 5px;
+  border-radius: 4px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  flex-shrink: 0;
+  margin-right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.project-menu-item:hover .project-delete-trigger,
+.project-menu-item:focus-within .project-delete-trigger {
+  opacity: 0.6;
+}
+.project-delete-trigger:hover {
+  opacity: 1 !important;
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+.delete-thread-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.delete-thread-btn:hover {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+}
+.delete-dialog {
+  max-width: 440px !important;
+}
+.delete-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* Convoke 3.0: Live Typewriter Progress & Multi-Model Dialogue */
+.typewriter-status-container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  background: rgba(18, 22, 21, 0.88) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  margin: 10px 0 10px 35px !important;
+  max-width: 92% !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(14px) !important;
+}
+.typewriter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+.typewriter-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.typewriter-badge {
+  background: rgba(86, 183, 129, 0.18);
+  color: #56b781;
+  border: 1px solid rgba(86, 183, 129, 0.35);
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.typewriter-percentage {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.typewriter-body {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #e5e7eb;
+  word-break: break-word;
+}
+.typewriter-cursor {
+  display: inline-block;
+  color: #56b781;
+  animation: typewriter-blink 0.8s infinite;
+  margin-left: 2px;
+  font-weight: bold;
+}
+@keyframes typewriter-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Convoke 3.0: Account & Device Sync */
+.account-dialog {
+  max-width: 480px !important;
+}
+.account-status-card {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.account-status-info strong {
+  display: block;
+  font-size: 14px;
+  color: var(--foreground);
+}
+.account-status-info p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.google-signin-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.google-signin-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+.account-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 14px 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.account-divider::before,
+.account-divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.account-divider span {
+  padding: 0 10px;
+}
+.account-form {
+  display: grid;
+  gap: 12px;
+}
+.account-form label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--foreground);
+  display: grid;
+  gap: 5px;
+}
+.account-form input {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--foreground);
+  font-size: 13.5px;
+}
+.account-form input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.account-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(86, 183, 129, 0.12);
+  color: #56b781;
+  border: 1px solid rgba(86, 183, 129, 0.25);
+  margin-top: 4px;
+}
+
+
 
