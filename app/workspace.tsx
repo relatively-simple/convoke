@@ -47,7 +47,7 @@ import { ClarificationDialog } from "./workspace/dialogs/ClarificationDialog";
 const PROMPT_RELAY_URL =
   (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_PROMPT_RELAY_URL)
     ? process.env.NEXT_PUBLIC_PROMPT_RELAY_URL
-    : "http://localhost:3000";
+    : "https://prompt-relay-navy.vercel.app/";
 import { SettingsSheet } from "./workspace/dialogs/SettingsSheet";
 import { AccountDialog } from "./workspace/dialogs/AccountDialog";
 import { CommandPalette } from "./workspace/dialogs/CommandPalette";
