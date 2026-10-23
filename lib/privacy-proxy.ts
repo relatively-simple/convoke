@@ -54,6 +54,10 @@ export function detectSensitiveEntities(text: string): DetectedEntity[] {
     return ph;
   };
 
+  const hasOverlap = (start: number, end: number) => {
+    return entities.some(e => Math.max(start, e.start) < Math.min(end, e.end));
+  };
+
   // 1. API Keys & Secrets
   const apiKeyRegex = /\b(?:sk-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{35}|gsk_[A-Za-z0-9]{20,}|gh[pous]_[A-Za-z0-9_]{36,}|nvapi-[A-Za-z0-9_-]{30,})\b/g;
   let match: RegExpExecArray | null;
@@ -87,6 +91,7 @@ export function detectSensitiveEntities(text: string): DetectedEntity[] {
   const nationalIdRegex = /\b(?:\d{3}-\d{2}-\d{4}|\d{9}[vVxX]|\d{12})\b/g;
   while ((match = nationalIdRegex.exec(text)) !== null) {
     const raw = match[0];
+    if (hasOverlap(match.index, match.index + raw.length)) continue;
     // For 12-digit strings: only treat as a Sri Lankan NIC if it starts with
     // a plausible birth year (19xx or 20xx). Other 12-digit numbers (e.g.
     // Unix timestamps) are skipped to avoid false positives.
@@ -107,6 +112,7 @@ export function detectSensitiveEntities(text: string): DetectedEntity[] {
   const ccRegex = /\b(?:\d{4}[-\s]?){3}\d{4}\b|\b\d{13,19}\b/g;
   while ((match = ccRegex.exec(text)) !== null) {
     const raw = match[0];
+    if (hasOverlap(match.index, match.index + raw.length)) continue;
     if (isValidLuhn(raw)) {
       entities.push({
         id: `card_${entities.length + 1}`,
@@ -123,8 +129,8 @@ export function detectSensitiveEntities(text: string): DetectedEntity[] {
   const phoneRegex = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g;
   while ((match = phoneRegex.exec(text)) !== null) {
     const raw = match[0];
-    // Check not already subsumed by an earlier match
-    if (!entities.some(e => match!.index >= e.start && match!.index < e.end)) {
+    // Check not already overlapping an earlier match
+    if (!hasOverlap(match.index, match.index + raw.length)) {
       entities.push({
         id: `phone_${entities.length + 1}`,
         type: "phone",

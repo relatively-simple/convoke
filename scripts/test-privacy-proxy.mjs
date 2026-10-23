@@ -71,4 +71,13 @@ const timestampText = "Event at 1728892800000.";
 const tsEntities = detectSensitiveEntities(timestampText);
 assert.ok(!tsEntities.some(e => e.type === "national_id"), "12-digit number not starting with 19/20 must not be detected as NIC");
 
+// 10. Test overlap prevention: embedded digits in API key do not trigger duplicate/overlapping entities
+const overlapText = "API key sk-abcdef123456789012345678901234567890 contains digit sequences.";
+const overlapEntities = detectSensitiveEntities(overlapText);
+assert.equal(overlapEntities.length, 1);
+assert.equal(overlapEntities[0].type, "api_key");
+const { maskedText: overlapMasked } = maskText(overlapText, overlapEntities);
+assert.ok(overlapMasked.includes("[API_KEY_1]"));
+assert.equal(unmaskText(overlapMasked, { "[API_KEY_1]": "sk-abcdef123456789012345678901234567890" }), overlapText);
+
 console.log("PASS: privacy proxy entity detection, Luhn validation, typed masking, and round-trip unmasking.");
