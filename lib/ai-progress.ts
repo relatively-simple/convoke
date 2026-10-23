@@ -7,5 +7,6 @@ export type AIProgress = {
   message: string;
   error?: string;
   waitSeconds?: number;
+  progressPercent?: number;
 };
 export type ProgressSink = (progress: AIProgress) => void;

@@ -199,11 +199,19 @@ export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, re
         if (signal.aborted) throw new HttpError(409, "This request was stopped.");
         await reserve();
         attempt++;
-        progress({ phase: "attempt", provider: names[provider], model, task, attempt, message: (task === "clarify" || task === "summary") ? "Checking your prompt for missing details" : task === "repair" ? "Repairing the generated code" : "Generating your result" });
+        const taskMsg =
+          task === "clarify" ? `Analyzing prompt for missing details using ${names[provider]} (${model})` :
+          task === "reasoning" ? `Selecting ${names[provider]} for reasoning · Sending prompt to ${model}` :
+          task === "coding" ? `Sending complete prompt to ${names[provider]} (${model}) for code generation` :
+          task === "repair" ? `Refining code output (${attempt}/3) using ${names[provider]} (${model})` :
+          task === "summary" ? `Updating project memory with ${names[provider]}` :
+          `Sending prompt to ${names[provider]} (${model})`;
+        const taskPercent = task === "clarify" || task === "summary" ? 20 : task === "repair" ? 90 : 65;
+        progress({ phase: "attempt", provider: names[provider], model, task, attempt, message: taskMsg, progressPercent: taskPercent });
         try {
           const result = await providerAttempt(provider, keys[provider]!, model, messages, task, signal, options.fetcher);
           health.delete(provider + ":" + model);
-          progress({ phase: "success", provider: names[provider], model, task, attempt, message: "Response received; validating the result" });
+          progress({ phase: "success", provider: names[provider], model, task, attempt, message: `Response received from ${names[provider]} · Validating structure`, progressPercent: 82 });
           return result;
         } catch (error) {
           if (!(error instanceof ProviderError)) throw error;
@@ -217,7 +225,8 @@ export function createProviderRouter(keys: ProviderKeys, signal: AbortSignal, re
           if (error.disable === "model") disabledModels.add(key);
 
           health.set(key, Date.now() + Math.max(error.retryMs, error.kind === "timeout" ? 15000 : 5000));
-          progress({ phase: "retry", provider: names[provider], model, task, attempt, message: `Switching models: ${error.message}`, error: `${error.kind}: ${error.message}` });
+          const errReason = error.kind === "timeout" ? "Server timed out at" : error.kind === "quota" ? "Daily quota reached at" : error.kind === "rate_limit" ? "Rate limit reached at" : "Server not available at";
+          progress({ phase: "retry", provider: names[provider], model, task, attempt, message: `${errReason} ${names[provider]}. Switching to next available model…`, error: `${error.kind}: ${error.message}` });
         }
       }
     }

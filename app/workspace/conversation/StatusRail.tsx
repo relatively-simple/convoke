@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Sparkles, RotateCw, ShieldCheck, Cpu } from "lucide-react";
 
 interface StatusRailProps {
@@ -11,6 +11,27 @@ interface StatusRailProps {
 }
 
 export function StatusRail({ status, provider, phase, progress }: StatusRailProps) {
+  const [displayedLength, setDisplayedLength] = useState(0);
+
+  useEffect(() => {
+    if (!status) return;
+
+    let length = 0;
+    const timer = setInterval(() => {
+      length += 2;
+      if (length >= status.length) {
+        setDisplayedLength(status.length);
+        clearInterval(timer);
+      } else {
+        setDisplayedLength(length);
+      }
+    }, 18);
+
+    return () => clearInterval(timer);
+  }, [status]);
+
+  const displayedText = status ? status.slice(0, Math.max(1, displayedLength)) : "";
+
   const badgeInfo = useMemo(() => {
     if (provider && provider !== "Convoke") {
       return { label: provider, icon: Cpu };
@@ -53,7 +74,7 @@ export function StatusRail({ status, provider, phase, progress }: StatusRailProp
       </div>
       <div className="typewriter-body">
         <span className="typewriter-text">
-          {status}
+          {displayedText || status}
           {clampedProgress < 100 && <span className="typewriter-cursor">▎</span>}
         </span>
       </div>

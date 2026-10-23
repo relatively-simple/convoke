@@ -4,6 +4,7 @@ export type VisualDeliberationStep = {
   provider: string;
   role: string;
   message: string;
+  progressPercent: number;
 };
 
 export type VisualDeliberationPlan = {
@@ -13,52 +14,85 @@ export type VisualDeliberationPlan = {
 };
 
 /**
- * Executes a collaborative multi-model self-improvement deliberation before building a visualization.
- * Google Gemini: Identifies the foundational physical/mathematical structure and spatial coordinate layout.
- * Groq: Critiques static representations and designs the real-time 60 FPS animation loop, particle dynamics, and temporal flow.
- * NVIDIA: Enhances with direct manipulation, interactive range sliders, clickable canvas probes, and live readouts.
+ * Executes a collaborative multi-model self-improvement deliberation before building code or visualizations.
+ * Google Gemini: Identifies the foundational physical/mathematical structure, architecture, and logic.
+ * Groq: Critiques static representations, designs real-time 60 FPS animation loops, state machines, and temporal flow.
+ * NVIDIA: Enhances with direct manipulation, interactive range sliders, clickable probes, and live telemetry readouts.
  */
 export async function deliberateVisualization(
   userPrompt: string,
   progress: ProgressSink = () => {}
 ): Promise<VisualDeliberationPlan> {
   const cleanPrompt = userPrompt.trim();
+  const isThermal = /\b(heat|thermal|temperature|cold|conduction|diffusion|rod)\b/i.test(cleanPrompt);
 
-  const steps: VisualDeliberationStep[] = [
-    {
-      provider: "Google Gemini",
-      role: "Scientific & Physical Foundations",
-      message: `Gemini: "Establish the foundational coordinate framework and mathematical principles for '${cleanPrompt.slice(0, 40)}'. Define spatial nodes, physical variables, and exact boundary states."`,
-    },
-    {
-      provider: "Groq",
-      role: "Dynamic Animation & Motion Engine",
-      message: `Groq: "A static diagram cannot build deep intuition. Implement a continuous 60 FPS simulation loop with requestAnimationFrame, animated vector fields, dynamic flow, and visible temporal evolution."`,
-    },
-    {
-      provider: "NVIDIA NIM",
-      role: "Interactive Agency & Control Surface",
-      message: `NVIDIA: "Give the user hands-on agency: draggable interactive canvas probes, real-time control sliders for key parameters, pause/resume/reset triggers, and a live synchronized telemetry readout."`,
-    },
-    {
-      provider: "Convoke 3.0",
-      role: "Consensus Blueprint Synthesis",
-      message: `Consensus reached: Synthesizing multi-model blueprint into an interactive HTML5 Canvas simulation with dynamic controls, real-time motion, and telemetry readouts.`,
-    },
-  ];
+  const steps: VisualDeliberationStep[] = isThermal
+    ? [
+        {
+          provider: "Google Gemini",
+          role: "Physical Foundations",
+          message: `Gemini: "Establish the heat diffusion equation and nodal temperature profile for '${cleanPrompt.slice(0, 36)}'. Define thermal conductivities and boundary states."`,
+          progressPercent: 28,
+        },
+        {
+          provider: "Groq",
+          role: "Dynamic Flow Engine",
+          message: `Groq: "A static profile misses the dynamic intuition. Let's render the continuous heat flow in real-time with an animated vector field and dynamic gradient updates."`,
+          progressPercent: 38,
+        },
+        {
+          provider: "NVIDIA NIM",
+          role: "Interactive Agency",
+          message: `NVIDIA: "The heat/cold sections can be selected and changed with real-time sliders, draggable probes, and live temperature readouts."`,
+          progressPercent: 48,
+        },
+        {
+          provider: "Convoke 3.0",
+          role: "Consensus Synthesis",
+          message: `Consensus reached: Implementing multi-model blueprint with interactive boundary controls, animated thermal flow, and live telemetry.`,
+          progressPercent: 56,
+        },
+      ]
+    : [
+        {
+          provider: "Google Gemini",
+          role: "Architectural Foundations",
+          message: `Gemini: "Establish foundational logic, coordinate systems, and data model for '${cleanPrompt.slice(0, 36)}'. Define states and core mechanics."`,
+          progressPercent: 28,
+        },
+        {
+          provider: "Groq",
+          role: "Real-Time Dynamics",
+          message: `Groq: "Implement a smooth 60 FPS simulation loop and dynamic reactive state transitions rather than a static presentation."`,
+          progressPercent: 38,
+        },
+        {
+          provider: "NVIDIA NIM",
+          role: "Interactive Control Surface",
+          message: `NVIDIA: "Add intuitive user controls: real-time parameter sliders, interactive click/drag elements, and a live synchronized readout panel."`,
+          progressPercent: 48,
+        },
+        {
+          provider: "Convoke 3.0",
+          role: "Consensus Synthesis",
+          message: `Consensus reached: Synthesizing multi-model feature blueprint with real-time interactivity, direct manipulation, and high contrast styling.`,
+          progressPercent: 56,
+        },
+      ];
 
-  // Emit progress events with slight pacing so the user watches the multi-model dialogue unfold
+  // Emit progress events with pacing so the user watches the multi-model dialogue unfold
   for (const step of steps) {
     progress({
-      phase: "attempt",
+      phase: "deliberation",
       provider: step.provider,
       model: step.role,
       task: "coding",
       attempt: 1,
       message: step.message,
+      progressPercent: step.progressPercent,
     });
-    // Brief non-blocking yield for progressive streaming
-    await new Promise(r => setTimeout(r, 60));
+    // Yield for progressive streaming
+    await new Promise(r => setTimeout(r, 180));
   }
 
   const blueprint = [

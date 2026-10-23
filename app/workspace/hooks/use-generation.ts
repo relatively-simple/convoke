@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { readGeneration } from "@/lib/generation-stream";
 import { testArtifact, recordRuntime } from "@/lib/runtime-client";
 import { maskText, unmaskText } from "@/lib/privacy-proxy";
-import { estimatedProgress, latestAnswerHasCanvas } from "@/lib/presentation";
+import { latestAnswerHasCanvas } from "@/lib/presentation";
 import { type Project, type Mode, type Capabilities } from "@/lib/project";
 import { api } from "./use-workspace-data";
 
@@ -55,11 +55,15 @@ export function useGeneration({
 
   const runRef = useRef<{ projectId: string; runId: string; controller: AbortController } | null>(null);
 
-  // Smooth simulated progress while generating
+  // Gentle micro-creep while waiting on a step, without jumping ahead to 88%
   useEffect(() => {
     if (!generating) return;
-    const start = Date.now();
-    const timer = window.setInterval(() => setProgress(estimatedProgress(Date.now() - start)), 400);
+    const timer = window.setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 98) return prev;
+        return Number((prev + 0.2).toFixed(1));
+      });
+    }, 800);
     return () => window.clearInterval(timer);
   }, [generating]);
 
@@ -67,7 +71,8 @@ export function useGeneration({
     async (project: Project, signal: AbortSignal): Promise<Project> => {
       while (project.versions.at(-1)?.runtime?.status === "pending") {
         const draft = project.versions.at(-1)!;
-        setStatus(draft.python ? "Running Python smoke checks…" : "Testing your result in the browser…");
+        setProgress(86);
+        setStatus(draft.python ? "Running Python smoke checks on code output…" : "Testing output code in browser sandbox…");
         let report;
         try {
           report = await testArtifact(draft, signal);
@@ -81,7 +86,8 @@ export function useGeneration({
           toast.error("The draft still has issues after three repairs. Your previous versions and source are saved.");
           break;
         }
-        setStatus(`Refining your result (${(draft.runtime?.attempts || 0) + 1}/3)…`);
+        setProgress(92);
+        setStatus(`Refining code output (${(draft.runtime?.attempts || 0) + 1}/3)…`);
         const runId = crypto.randomUUID();
         if (runRef.current) runRef.current.runId = runId;
         const response = await fetch("/api/generate", {
@@ -126,10 +132,10 @@ export function useGeneration({
       }
 
       setGenerating(true);
-      setProgress(4);
+      setProgress(10);
       setBusy(true);
       setPendingText(text);
-      setStatus("Saving your request…");
+      setStatus("Analyzing request and selecting AI model…");
 
       let project = activeProject;
       let textToSend = text;
@@ -177,18 +183,19 @@ export function useGeneration({
         });
 
         let completed = await readGeneration(response, (event) => {
-          if (event.phase !== "retry") {
-            if (event.message) setStatus(event.message);
-            else
-              setStatus(
-                event.task === "clarify"
-                  ? "Checking the details…"
-                  : event.task === "repair"
-                  ? "Refining your result…"
-                  : "Working on your answer…"
-              );
-            if (event.provider) setStatusProvider(event.provider);
-            if (event.phase) setStatusPhase(event.phase);
+          if (event.message) setStatus(event.message);
+          else
+            setStatus(
+              event.task === "clarify"
+                ? "Analyzing prompt for missing details…"
+                : event.task === "repair"
+                ? "Refining code output…"
+                : "Working on your answer…"
+            );
+          if (event.provider) setStatusProvider(event.provider);
+          if (event.phase) setStatusPhase(event.phase);
+          if (typeof event.progressPercent === "number") {
+            setProgress(event.progressPercent);
           }
         });
 
@@ -210,6 +217,12 @@ export function useGeneration({
         }
         if (compare) setComparisonOpen(true);
         if (boardroom) setBoardroomOpen(true);
+
+        if (completed.versions.length > 0) {
+          setProgress(97);
+          setStatus(completed.versions.at(-1)?.python ? "Rendering output Python code UI…" : "Rendering output UI in interactive canvas…");
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
 
         setGenerating(false);
         setProgress(100);
