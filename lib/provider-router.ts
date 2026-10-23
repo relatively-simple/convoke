@@ -97,19 +97,43 @@ export async function providerAttempt(provider: Provider, key: string, model: st
     if (parsedObj && typeof parsedObj === "object") {
       rawParsed = parsedObj as Record<string, unknown>;
       if (rawParsed.artifact && typeof rawParsed.artifact === "object") {
-        const art = rawParsed.artifact as { html?: string; python?: string; tests?: unknown };
+        const art = rawParsed.artifact as { html?: string; python?: string; tests?: unknown; libraries?: unknown; title?: unknown };
         if (!art.html?.trim() && !art.python?.trim()) {
           rawParsed.artifact = null;
-        } else if (Array.isArray(art.tests)) {
-          art.tests = art.tests
-            .filter((t: unknown): t is { name: string; steps: { action: string; selector: string; value?: string }[] } =>
-              !!t && typeof t === "object" && typeof (t as { name?: unknown }).name === "string" && Array.isArray((t as { steps?: unknown }).steps)
-            )
-            .slice(0, 3);
         } else {
-          art.tests = undefined;
+          // Ensure title is a non-empty string
+          if (!art.title || typeof art.title !== "string" || !art.title.trim()) art.title = "Untitled";
+          // Ensure html is always present as string
+          if (typeof art.html !== "string") art.html = "";
+          // Sanitize tests: must be array of {name, steps}
+          if (Array.isArray(art.tests)) {
+            art.tests = art.tests
+              .filter((t: unknown): t is { name: string; steps: { action: string; selector: string; value?: string }[] } =>
+                !!t && typeof t === "object" && typeof (t as { name?: unknown }).name === "string" && Array.isArray((t as { steps?: unknown }).steps)
+              )
+              .slice(0, 3);
+          } else {
+            art.tests = undefined;
+          }
+          // Sanitize libraries: must be string[] of known values, never an object
+          if (art.libraries !== undefined) {
+            if (Array.isArray(art.libraries)) {
+              art.libraries = (art.libraries as unknown[]).filter((l): l is "three" => l === "three").slice(0, 1);
+              if ((art.libraries as unknown[]).length === 0) art.libraries = undefined;
+            } else {
+              art.libraries = undefined;
+            }
+          }
         }
+      } else if (rawParsed.artifact !== null && rawParsed.artifact !== undefined) {
+        // artifact is present but not an object (e.g. a string or boolean) — null it out
+        rawParsed.artifact = null;
       }
+      // Ensure artifact key always exists (models sometimes omit it entirely)
+      if (!("artifact" in rawParsed)) rawParsed.artifact = null;
+      // Sanitize reply: must be a string, truncate if over 6000 chars
+      if (typeof rawParsed.reply !== "string") rawParsed.reply = String(rawParsed.reply ?? "Here is the result.");
+      if (rawParsed.reply.length > 6000) rawParsed.reply = rawParsed.reply.slice(0, 6000);
       if (task === "clarify" && Array.isArray(rawParsed.questions)) {
         const qs: string[] = [];
         const opts: string[][] = [];
