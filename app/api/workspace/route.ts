@@ -59,14 +59,23 @@ export async function POST(request: Request) {
       await commitProject(project,userId,body.revision);return json({project});
     }
     if (body.action === "adopt-boardroom") {
-      const time = new Date().toISOString();
-      project.messages.push({
-        id: crypto.randomUUID(),
-        role: "assistant",
-        text: body.content,
-        model: `Adopted · ${body.source}`,
-        createdAt: time,
-      });
+      const existing = project.messages.find(m => m.boardroomId === body.boardroomId)
+        || project.messages.filter(m => m.role === "assistant" && (m.model?.includes("Boardroom") || m.model?.includes("Chairman"))).at(-1);
+      if (existing) {
+        existing.text = body.content;
+        existing.model = body.source.startsWith("AI Boardroom") ? body.source : `AI Boardroom · ${body.source}`;
+        existing.boardroomId = body.boardroomId;
+      } else {
+        const time = new Date().toISOString();
+        project.messages.push({
+          id: crypto.randomUUID(),
+          role: "assistant",
+          text: body.content,
+          model: body.source.startsWith("AI Boardroom") ? body.source : `AI Boardroom · ${body.source}`,
+          boardroomId: body.boardroomId,
+          createdAt: time,
+        });
+      }
       await commitProject(project, userId, body.revision);
       return json({ project });
     }

@@ -8,10 +8,12 @@ import { Answer } from "./answer";
 
 export function BoardroomView({
   session,
+  currentContent,
   onAdoptVerdict,
   disabled = false,
 }: {
   session: BoardroomSession;
+  currentContent?: string;
   onAdoptVerdict?: (content: string, source: string) => void;
   disabled?: boolean;
 }) {
@@ -86,12 +88,22 @@ export function BoardroomView({
 
             {onAdoptVerdict && (
               <div className="boardroom-adopt-bar">
-                <Button
-                  disabled={disabled}
-                  onClick={() => onAdoptVerdict(session.synthesis.verdict, `Chairman (${session.chairmanModel})`)}
-                >
-                  Adopt Executive Verdict into Workspace
-                </Button>
+                {currentContent === session.synthesis.verdict ? (
+                  <Button
+                    variant="outline"
+                    disabled={true}
+                    className="boardroom-adopted-btn"
+                  >
+                    <CheckCircle2 size={15} /> Executive Verdict Active in Workspace
+                  </Button>
+                ) : (
+                  <Button
+                    disabled={disabled}
+                    onClick={() => onAdoptVerdict(session.synthesis.verdict, `Chairman (${session.chairmanModel})`)}
+                  >
+                    {currentContent ? "Re-adopt Executive Verdict into Workspace" : "Adopt Executive Verdict into Workspace"}
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -143,14 +155,25 @@ export function BoardroomView({
                     <span className="provider-tag">{draft.provider}</span>
                   </div>
                   {onAdoptVerdict && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={disabled}
-                      onClick={() => onAdoptVerdict(draft.content, `${draft.provider} · ${draft.model}`)}
-                    >
-                      Use this proposal
-                    </Button>
+                    currentContent === draft.content ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={true}
+                        className="boardroom-adopted-btn"
+                      >
+                        <CheckCircle2 size={13} /> Active in workspace
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={disabled}
+                        onClick={() => onAdoptVerdict(draft.content, `${draft.provider} · ${draft.model}`)}
+                      >
+                        Use this proposal
+                      </Button>
+                    )
                   )}
                 </div>
                 {draft.summary && <p className="draft-summary">{draft.summary}</p>}

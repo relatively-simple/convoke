@@ -122,11 +122,12 @@ async function execute(request: Request, progress: ProgressSink = () => {}) {
         if (!running || request.signal.aborted) throw new HttpError(409, "This boardroom deliberation was stopped.");
       };
       const keys = { groq: env.GROQ_API_KEY, gemini: env.GEMINI_API_KEY, nvidia: env.NVIDIA_API_KEY };
-      const session = await runBoardroomSession(project, effectivePrompt, request.signal, reserve, progress, { keys });
+      const displayedPrompt = project.confirmedTask?.prompt || body.prompt;
+      const session = await runBoardroomSession(project, displayedPrompt, request.signal, reserve, progress, { keys });
       project.boardroom = session;
       const time = new Date().toISOString();
       project.messages.push(
-        { id: crypto.randomUUID(), role: "user", text: effectivePrompt, createdAt: time },
+        { id: crypto.randomUUID(), role: "user", text: displayedPrompt, createdAt: time },
         { id: crypto.randomUUID(), role: "assistant", text: session.synthesis.verdict, model: `AI Boardroom · ${session.chairmanModel}`, routing: `Synthesized consensus of 3 models across providers. Consensus: ${session.synthesis.consensus.slice(0, 150)}…`, boardroomId: session.id, cost: estimateCost(session.chairmanModel, session.tokens), createdAt: time }
       );
       await commitProject(project, userId, body.revision, runId, { model: `AI Boardroom · ${session.chairmanModel}`, tokens: session.tokens });
@@ -146,7 +147,30 @@ async function execute(request: Request, progress: ProgressSink = () => {}) {
     project.clarification = questions.length ? {id:crypto.randomUUID(),prompt:project.confirmedTask?.prompt || body.prompt,mode:effectiveMode,questions,options} : undefined;
     const artifactId=result.artifact?crypto.randomUUID():undefined;
     const cost = estimateCost(model, tokens);
-    if(!body.runtimeVersionId) project.messages.push({id:crypto.randomUUID(),role:"user",text:effectivePrompt,createdAt:time},{id:crypto.randomUUID(),role:"assistant",text:result.reply,model,routing,visuals:result.visuals,artifactId,cost,createdAt:time});
+    const displayedPrompt = project.confirmedTask?.prompt || body.prompt;
+    if(!body.runtimeVersionId) {
+      if (body.clarificationId) {
+        const placeholder = project.messages.filter(m => m.role === "assistant").at(-1);
+        if (placeholder && placeholder.text.includes("A few details will help me get this right")) {
+          placeholder.text = result.reply;
+          placeholder.model = model;
+          placeholder.routing = routing;
+          placeholder.visuals = result.visuals;
+          placeholder.artifactId = artifactId;
+          placeholder.cost = cost;
+        } else {
+          project.messages.push(
+            { id: crypto.randomUUID(), role: "user", text: displayedPrompt, createdAt: time },
+            { id: crypto.randomUUID(), role: "assistant", text: result.reply, model, routing, visuals: result.visuals, artifactId, cost, createdAt: time }
+          );
+        }
+      } else {
+        project.messages.push(
+          { id: crypto.randomUUID(), role: "user", text: displayedPrompt, createdAt: time },
+          { id: crypto.randomUUID(), role: "assistant", text: result.reply, model, routing, visuals: result.visuals, artifactId, cost, createdAt: time }
+        );
+      }
+    }
     if(body.runtimeVersionId){
       if(!result.artifact)throw new HttpError(502,"The repair did not return an artifact. Your previous draft is retained.");
       const message=project.messages.filter(m=>m.role==="assistant").at(-1);

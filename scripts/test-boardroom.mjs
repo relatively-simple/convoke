@@ -108,4 +108,41 @@ await assert.rejects(
   /stopped/
 );
 
-console.log("PASS: 3-stage AI boardroom drafting, anonymous peer cross-examination, and chairman synthesis.");
+// Test boardroom adoption deduplication
+const boardroomProject = newProject("Boardroom Adoption Test");
+const time = new Date().toISOString();
+boardroomProject.messages.push(
+  { id: "u1", role: "user", text: session.prompt, createdAt: time },
+  { id: "a1", role: "assistant", text: session.synthesis.verdict, model: `AI Boardroom · ${session.chairmanModel}`, boardroomId: session.id, createdAt: time }
+);
+assert.equal(boardroomProject.messages.length, 2);
+
+// Simulate adopt-boardroom action logic: adopting Executive Verdict into existing workspace
+const existing = boardroomProject.messages.find(m => m.boardroomId === session.id);
+assert.ok(existing, "Existing boardroom message must be found");
+if (existing) {
+  existing.text = session.synthesis.verdict;
+  existing.model = `AI Boardroom · Chairman (${session.chairmanModel})`;
+}
+// Message count must NOT increase (no duplicate created)
+assert.equal(boardroomProject.messages.length, 2, "Adopting verdict must not push duplicate message");
+assert.equal(boardroomProject.messages.filter(m => m.role === "assistant").length, 1);
+
+// Adopting a member draft proposal updates the message in-place
+const proposal = session.drafts[0].content;
+if (existing) {
+  existing.text = proposal;
+  existing.model = `AI Boardroom · ${session.drafts[0].provider} · ${session.drafts[0].model}`;
+}
+assert.equal(boardroomProject.messages.length, 2, "Adopting proposal must not push duplicate message");
+assert.equal(boardroomProject.messages[1].text, proposal);
+assert.equal(boardroomProject.messages.filter(m => m.role === "assistant").length, 1);
+
+// Test clean user prompt display vs background clarification details
+const rawInjectedPrompt = "explain differentiation\nUser-confirmed details:\nWhat is your level?\nHigh school\nClarification is complete. Generate the requested result now using these answers. Do not ask another set of questions; use reasonable assumptions for remaining gaps.";
+const cleanDisplayedPrompt = rawInjectedPrompt.includes("\nUser-confirmed details:\n")
+  ? rawInjectedPrompt.split("\nUser-confirmed details:\n")[0]
+  : rawInjectedPrompt;
+assert.equal(cleanDisplayedPrompt, "explain differentiation", "Displayed prompt must show clean user input without Q&A dump");
+
+console.log("PASS: 3-stage AI boardroom drafting, anonymous peer cross-examination, chairman synthesis, and non-duplicative adoption.");

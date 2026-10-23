@@ -134,6 +134,8 @@ Convoke 3.0 is a multi-model AI synthesis workspace and collaboration platform b
 | LOG-01 | Low | `lib/server.ts:14` | `console.error` in `errorResponse` logged only `error.name`, discarding stack traces and messages | Logged `error.stack \|\| error.message` for comprehensive diagnosis | `d6d2627` |
 | RETRY-01 | Low | `lib/retry.ts:6-7` | `waitForRetry` rejected with `undefined` when `signal.reason` was falsy | Added fallback `new DOMException("The operation was aborted.", "AbortError")` | `d6d2627` |
 | STREAM-01 | Low | `lib/generation-stream.ts:61` | Calling `reader.releaseLock()` in `readGeneration` finally block threw unhandled TypeError if already released | Wrapped lock release in safe `try/catch` | `d6d2627` |
+| BRD-01 | High | `app/api/workspace/route.ts:61-72`, `components/boardroom-view.tsx:88-96` | Adopting Boardroom executive verdict or proposal appended duplicate assistant messages; UI showed active adoption button even when verdict was already in workspace | In-place update of existing boardroom message, active checkmark UI state, non-duplicative adoption | `551c274` |
+| CLAR-01 | High | `app/api/generate/route.ts:66,129,149`, `app/workspace.tsx:536` | Clarification Q&A injection dump was saved and displayed in user chat prompt bubble instead of being passed in background | Stored clean prompt `displayedPrompt` in chat, backgrounded Q&A via `effectivePrompt`/`confirmedTask`, collapsed legacy strings | `551c274` |
 
 ---
 

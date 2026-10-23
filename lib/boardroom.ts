@@ -150,6 +150,7 @@ export async function runBoardroomSession(
             prompt,
             projectBrief: project.brief || undefined,
             projectMemory: project.memory?.text || undefined,
+            confirmedTask: project.confirmedTask || undefined,
           }),
         },
       ];
@@ -251,6 +252,7 @@ export async function runBoardroomSession(
       role: "user",
       content: JSON.stringify({
         userPrompt: prompt,
+        confirmedTask: project.confirmedTask || undefined,
         allProposals: drafts.map(d => ({ perspective: labelMap.get(d.memberId), proposal: d.content })),
         peerReviews: reviews.map(r => ({ reviewer: r.reviewerModel, critiques: r.critiques })),
       }),
