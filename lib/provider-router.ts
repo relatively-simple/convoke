@@ -90,26 +90,34 @@ export async function providerAttempt(provider: Provider, key: string, model: st
     task === "boardroom-review" ? boardroomCritiqueResponseSchema :
     task === "boardroom-synthesis" ? boardroomSynthesisResponseSchema :
     resultSchema;
-  let rawParsed: any;
+  let rawParsed: Record<string, unknown> | null = null;
   try {
-    rawParsed = parseJson(content || "");
-    if (rawParsed && typeof rawParsed === "object" && rawParsed.artifact && !rawParsed.artifact.html?.trim() && !rawParsed.artifact.python?.trim()) {
-      rawParsed.artifact = null;
-    }
-    if (task === "clarify" && rawParsed && typeof rawParsed === "object" && Array.isArray(rawParsed.questions)) {
-      const qs: string[] = [];
-      const opts: string[][] = [];
-      for (let i = 0; i < Math.min(rawParsed.questions.length, 12); i++) {
-        const q = String(rawParsed.questions[i] || "").trim().slice(0, 250);
-        if (!q) continue;
-        let o = Array.isArray(rawParsed.options?.[i]) ? rawParsed.options[i].map((x: any) => String(x || "").trim().slice(0, 120)).filter(Boolean) : [];
-        if (o.length < 2) o = ["Standard / Recommended", "Alternative approach"];
-        if (o.length > 4) o = o.slice(0, 4);
-        qs.push(q);
-        opts.push(o);
+    const parsedObj = parseJson(content || "");
+    if (parsedObj && typeof parsedObj === "object") {
+      rawParsed = parsedObj as Record<string, unknown>;
+      if (rawParsed.artifact && typeof rawParsed.artifact === "object") {
+        const art = rawParsed.artifact as { html?: string; python?: string };
+        if (!art.html?.trim() && !art.python?.trim()) {
+          rawParsed.artifact = null;
+        }
       }
-      rawParsed.questions = qs;
-      rawParsed.options = opts;
+      if (task === "clarify" && Array.isArray(rawParsed.questions)) {
+        const qs: string[] = [];
+        const opts: string[][] = [];
+        const rawOpts = Array.isArray(rawParsed.options) ? rawParsed.options : [];
+        for (let i = 0; i < Math.min(rawParsed.questions.length, 12); i++) {
+          const q = String(rawParsed.questions[i] || "").trim().slice(0, 250);
+          if (!q) continue;
+          const candidateOptions = Array.isArray(rawOpts[i]) ? rawOpts[i] : [];
+          let o = candidateOptions.map((x: unknown) => String(x || "").trim().slice(0, 120)).filter(Boolean);
+          if (o.length < 2) o = ["Standard / Recommended", "Alternative approach"];
+          if (o.length > 4) o = o.slice(0, 4);
+          qs.push(q);
+          opts.push(o);
+        }
+        rawParsed.questions = qs;
+        rawParsed.options = opts;
+      }
     }
     if (!validator.safeParse(rawParsed).success) throw Error("Invalid response");
   } catch {

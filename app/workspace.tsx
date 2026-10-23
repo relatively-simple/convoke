@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Orbit, Plus, MessageSquare, Sparkles, Code2, BookOpen, Settings2, Download, History, Check, Send, PanelRight, FileText, ChevronRight, Square, RotateCcw, Eye, ShieldCheck, ShieldAlert, Users, SlidersHorizontal, Trash2, LogIn, LogOut, Laptop, Globe } from "lucide-react";
+import { Orbit, Plus, MessageSquare, Sparkles, Code2, BookOpen, Settings2, Download, History, Check, Send, PanelRight, FileText, ChevronRight, Square, RotateCcw, Eye, ShieldCheck, ShieldAlert, Users, SlidersHorizontal, Trash2, LogIn, LogOut, Laptop } from "lucide-react";
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from "@/components/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -40,9 +40,8 @@ function TypewriterStatus({
 }) {
   const [displayed, setDisplayed] = useState("");
   useEffect(() => {
-    let idx = 0;
-    setDisplayed("");
     if (!text) return;
+    let idx = 0;
     const interval = setInterval(() => {
       idx += 2;
       setDisplayed(text.slice(0, idx));
@@ -94,8 +93,8 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
   const [userAccount, setUserAccount] = useState<{ email?: string; displayName?: string; provider?: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/session").then(r => r.json()).then((data: any) => {
-      if (data.user) setUserAccount(data.user);
+    fetch("/api/session").then(r => r.json() as Promise<{ user?: { email?: string; displayName?: string; provider?: string } }>).then(data => {
+      if (data?.user) setUserAccount(data.user);
     }).catch(() => {});
   }, []);
 
@@ -378,7 +377,6 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
     const runId = crypto.randomUUID(), controller = new AbortController();
     runRef.current = { projectId: active.id, runId, controller };
     try {
-      const target = active.messages.find(m => m.id === messageId);
       const targetIndex = active.messages.findIndex(m => m.id === messageId);
       const precedingUserMsg = active.messages.slice(0, targetIndex >= 0 ? targetIndex : undefined).reverse().find(m => m.role === "user");
       const promptToSend = (precedingUserMsg?.text || "Verify factual claims").slice(0, 4000);
@@ -428,7 +426,6 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
     const runId = crypto.randomUUID(), controller = new AbortController();
     runRef.current = { projectId: active.id, runId, controller };
     try {
-      const target = active.messages.find(m => m.id === messageId);
       const targetIndex = active.messages.findIndex(m => m.id === messageId);
       const precedingUserMsg = active.messages.slice(0, targetIndex >= 0 ? targetIndex : undefined).reverse().find(m => m.role === "user");
       const promptToSend = (precedingUserMsg?.text || "Second opinion").slice(0, 4000);
@@ -536,7 +533,7 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
         <section className="conversation" aria-label="Conversation">
           <div className="conversation-toolbar"><span><MessageSquare size={15}/>Conversation</span><div style={{display:"flex",alignItems:"center",gap:"8px"}}>{active&&<button onClick={()=>{setBriefDraft(active.brief);setTitleDraft(active.title);setBriefOpen(true)}} disabled={busy}><FileText size={15}/>Project brief</button>}{active&&<button type="button" className="delete-thread-btn" onClick={()=>setConfirmDeleteId(active.id)} disabled={busy} title="Delete this chat thread"><Trash2 size={13}/><span>Delete chat</span></button>}</div></div>
           <div className="conversation-scroll">
-            {!active?.messages.length&&!pendingText?<div className="welcome"><span className="welcome-mark"><Orbit size={29}/></span><span className="eyebrow">ROOM FOR YOUR NEXT IDEA</span><h1>What are we<br/>making today?</h1><p>Something to understand.<br/>Something to bring to life.</p><p className="connection-caption">{caps.live?"Describe your idea. AI will build the result here.":loading?"Opening your workspace…":"AI is temporarily unavailable. Please try again shortly."}</p></div>:<div className="messages">{active?.messages.map(m=><article key={m.id} className={`message ${m.role}`}><div className="message-heading">{m.role==="assistant"?<span className="assistant-symbol"><Orbit size={16}/></span>:<span className="user-symbol">Y</span>}<strong>{m.role==="assistant"?"Convoke":"You"}</strong>{m.model&&<small>{m.model==="demo"?"Saved response":m.model}</small>}{m.boardroomId&&<button type="button" className="boardroom-pill" onClick={()=>setBoardroomOpen(true)}><Users size={12}/>Boardroom deliberation</button>}{m.cost&&<span className="cost-ledger-tag">⚡ {m.cost.label}</span>}</div>{m.role === "assistant" ? <>{m.visuals?.length?<VisualAnswers visuals={m.visuals} onExplain={busy?undefined:caption=>void send(`Explain this in words: ${caption}`,"explain")}/>:null}<Answer text={m.text}/>{m.factCheck?<FactCheckView report={m.factCheck} onApplyCorrection={c=>void applyCorrection(m.id,c)} disabled={busy}/>:null}{m.secondOpinion?<SecondOpinionView report={m.secondOpinion} onApply={rev=>void applySecondOpinion(m.id,rev)} busy={busy}/>:null}<div className="message-actions">{!m.factCheck&&<Button variant="ghost" size="sm" className="verify-button" disabled={busy} onClick={()=>void verifyMessage(m.id)}><ShieldCheck size={13}/>Verify facts</Button>}{!m.secondOpinion&&<Button variant="ghost" size="sm" className="opinion-button" disabled={busy} onClick={()=>void requestSecondOpinion(m.id)}><Sparkles size={13}/>Second opinion (~$0.001)</Button>}</div></> : <Answer text={m.text}/>}{m.routing&&<details className="route-details"><summary>How this was routed</summary><p>{m.routing}</p><small>Models are selected for the task. Availability and quality vary.</small></details>}</article>)}{pendingText&&<article className="message user"><div className="message-heading"><span className="user-symbol">Y</span><strong>You</strong></div><Answer text={pendingText}/></article>}{status&&<TypewriterStatus text={status} provider={statusProvider} phase={statusPhase} progress={progress}/>}<div ref={messagesEnd}/></div>}
+            {!active?.messages.length&&!pendingText?<div className="welcome"><span className="welcome-mark"><Orbit size={29}/></span><span className="eyebrow">ROOM FOR YOUR NEXT IDEA</span><h1>What are we<br/>making today?</h1><p>Something to understand.<br/>Something to bring to life.</p><p className="connection-caption">{caps.live?"Describe your idea. AI will build the result here.":loading?"Opening your workspace…":"AI is temporarily unavailable. Please try again shortly."}</p></div>:<div className="messages">{active?.messages.map(m=><article key={m.id} className={`message ${m.role}`}><div className="message-heading">{m.role==="assistant"?<span className="assistant-symbol"><Orbit size={16}/></span>:<span className="user-symbol">Y</span>}<strong>{m.role==="assistant"?"Convoke":"You"}</strong>{m.model&&<small>{m.model==="demo"?"Saved response":m.model}</small>}{m.boardroomId&&<button type="button" className="boardroom-pill" onClick={()=>setBoardroomOpen(true)}><Users size={12}/>Boardroom deliberation</button>}{m.cost&&<span className="cost-ledger-tag">⚡ {m.cost.label}</span>}</div>{m.role === "assistant" ? <>{m.visuals?.length?<VisualAnswers visuals={m.visuals} onExplain={busy?undefined:caption=>void send(`Explain this in words: ${caption}`,"explain")}/>:null}<Answer text={m.text}/>{m.factCheck?<FactCheckView report={m.factCheck} onApplyCorrection={c=>void applyCorrection(m.id,c)} disabled={busy}/>:null}{m.secondOpinion?<SecondOpinionView report={m.secondOpinion} onApply={rev=>void applySecondOpinion(m.id,rev)} busy={busy}/>:null}<div className="message-actions">{!m.factCheck&&<Button variant="ghost" size="sm" className="verify-button" disabled={busy} onClick={()=>void verifyMessage(m.id)}><ShieldCheck size={13}/>Verify facts</Button>}{!m.secondOpinion&&<Button variant="ghost" size="sm" className="opinion-button" disabled={busy} onClick={()=>void requestSecondOpinion(m.id)}><Sparkles size={13}/>Second opinion (~$0.001)</Button>}</div></> : <Answer text={m.text}/>}{m.routing&&<details className="route-details"><summary>How this was routed</summary><p>{m.routing}</p><small>Models are selected for the task. Availability and quality vary.</small></details>}</article>)}{pendingText&&<article className="message user"><div className="message-heading"><span className="user-symbol">Y</span><strong>You</strong></div><Answer text={pendingText}/></article>}{status&&<TypewriterStatus key={status} text={status} provider={statusProvider} phase={statusPhase} progress={progress}/>}<div ref={messagesEnd}/></div>}
             {loading&&<p className="inline-status" role="status"><span className="loading-dots" aria-hidden="true">•••</span>Loading your projects…</p>}
             {loadError&&<div className="load-error" role="alert">{loadError}<Button variant="outline" onClick={()=>void load()}>Try again</Button></div>}
           </div>
