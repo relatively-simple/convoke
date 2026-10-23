@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { verifyAnswer } from '../lib/fact-check.ts';
+import { verifyAnswer, factCheckReportSchema } from '../lib/fact-check.ts';
 
 const prompt = "What is the speed of light in vacuum and what year was special relativity published?";
 const answer = "The speed of light in vacuum is approximately 299,792,458 meters per second. Albert Einstein published his paper on special relativity in 1905.";
@@ -49,6 +49,7 @@ const report = await verifyAnswer(
 
 assert.equal(reserved, 1);
 assert.equal(report.messageId, "msg-123");
+assert.equal(factCheckReportSchema.safeParse(report).success, true);
 assert.equal(report.verdict, "verified");
 assert.equal(report.claims.length, 2);
 assert.equal(report.claims[0].status, "supported");

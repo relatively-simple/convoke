@@ -24,7 +24,7 @@ export const factCheckResponseSchema = z.object({
 
 export const factCheckReportSchema = factCheckResponseSchema.extend({
   id: z.string().uuid(),
-  messageId: z.string().uuid(),
+  messageId: z.string().min(1).max(128),
   createdAt: z.string(),
 });
 

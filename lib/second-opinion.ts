@@ -16,7 +16,7 @@ export const secondOpinionResponseSchema = z.object({
 
 export const secondOpinionReportSchema = secondOpinionResponseSchema.extend({
   id: z.string().uuid(),
-  messageId: z.string().uuid(),
+  messageId: z.string().min(1).max(128),
   reviewerProvider: z.string(),
   reviewerModel: z.string(),
   createdAt: z.string(),

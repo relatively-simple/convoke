@@ -12,7 +12,23 @@ import { createProviderRouter } from "@/lib/provider-router";
 import { env } from "cloudflare:workers";
 import { owner, db, json, readBody, errorResponse, HttpError, getProject, commitProject, checkCapacity, capabilities } from "@/lib/server";
 export const dynamic = "force-dynamic";
-const schema = z.object({ compare:z.boolean().optional(), boardroom:z.boolean().optional(), factCheck:z.object({ messageId:z.string().uuid() }).optional(), secondOpinion:z.object({ messageId:z.string().uuid() }).optional(), runtimeVersionId:z.string().uuid().optional(), projectId:z.string().uuid(), revision:z.number().int().nonnegative(), runId:z.string().uuid(), prompt:z.string().trim().min(1).max(16000), mode:modeSchema, live:z.literal(true).optional(), thorough:z.boolean().default(true), smartRouting:z.boolean().default(true), clarificationId:z.string().uuid().optional(), answers:z.array(z.string().trim().min(1).max(800)).min(1).max(12).optional() });
+const schema = z.object({
+  compare: z.boolean().optional(),
+  boardroom: z.boolean().optional(),
+  factCheck: z.object({ messageId: z.string().min(1).max(128) }).optional(),
+  secondOpinion: z.object({ messageId: z.string().min(1).max(128) }).optional(),
+  runtimeVersionId: z.string().uuid().optional(),
+  projectId: z.string().uuid(),
+  revision: z.number().int().nonnegative(),
+  runId: z.string().uuid(),
+  prompt: z.string().trim().min(1).max(16000),
+  mode: modeSchema,
+  live: z.literal(true).optional(),
+  thorough: z.boolean().default(true),
+  smartRouting: z.boolean().default(true),
+  clarificationId: z.string().uuid().optional(),
+  answers: z.array(z.string().trim().min(1).max(800)).min(1).max(12).optional(),
+});
 export async function POST(request: Request) {
   if (request.headers.get("accept")?.includes("application/x-ndjson")) return generationStream(request, execute);
   return execute(request);
@@ -21,7 +37,13 @@ async function execute(request: Request, progress: ProgressSink = () => {}) {
   let runId: string | undefined, userId: string | undefined, project: Project | undefined;
   try {
     userId = await owner(); const parsed = schema.safeParse(await readBody(request));
-    if (!parsed.success) throw new HttpError(400, "Please enter a message of up to 4,000 characters.");
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      if (issue?.path.includes("prompt")) {
+        throw new HttpError(400, "Please enter a message of up to 4,000 characters.");
+      }
+      throw new HttpError(400, issue ? `${issue.path.join(".")}: ${issue.message}` : "Invalid request payload.");
+    }
     const body = parsed.data;
     project = await getProject(body.projectId, userId);
     const previous = await db().prepare("SELECT status FROM runs WHERE id = ? AND owner = ? AND project_id = ?").bind(body.runId,userId,project.id).first<{status:string}>();

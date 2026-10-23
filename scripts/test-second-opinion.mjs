@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { getSecondOpinion } from "../lib/second-opinion.ts";
+import { getSecondOpinion, secondOpinionReportSchema } from "../lib/second-opinion.ts";
 
 const prompt = "How do I securely store user passwords in a database?";
 const answer = "You should hash passwords using bcrypt or Argon2 with a unique salt per user, and set a sufficiently high work factor to resist brute-force attacks.";
@@ -48,6 +48,7 @@ const reportFromGroq = await getSecondOpinion(
 );
 
 assert.equal(reportFromGroq.messageId, messageId);
+assert.equal(secondOpinionReportSchema.safeParse(reportFromGroq).success, true);
 assert.equal(reportFromGroq.reviewerProvider, "groq");
 assert.equal(reportFromGroq.verdict, "agrees");
 assert.equal(reportFromGroq.strengths?.length, 2);
