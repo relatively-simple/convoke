@@ -263,6 +263,9 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
     runRef.current = { projectId: active.id, runId, controller };
     try {
       const target = active.messages.find(m => m.id === messageId);
+      const targetIndex = active.messages.findIndex(m => m.id === messageId);
+      const precedingUserMsg = active.messages.slice(0, targetIndex >= 0 ? targetIndex : undefined).reverse().find(m => m.role === "user");
+      const promptToSend = (precedingUserMsg?.text || "Verify factual claims").slice(0, 4000);
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/x-ndjson" },
@@ -271,7 +274,7 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
           projectId: active.id,
           revision: active.revision,
           runId,
-          prompt: target?.text || "Verify",
+          prompt: promptToSend,
           mode,
           smartRouting,
           factCheck: { messageId }
@@ -308,6 +311,9 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
     runRef.current = { projectId: active.id, runId, controller };
     try {
       const target = active.messages.find(m => m.id === messageId);
+      const targetIndex = active.messages.findIndex(m => m.id === messageId);
+      const precedingUserMsg = active.messages.slice(0, targetIndex >= 0 ? targetIndex : undefined).reverse().find(m => m.role === "user");
+      const promptToSend = (precedingUserMsg?.text || "Second opinion").slice(0, 4000);
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/x-ndjson" },
@@ -316,7 +322,7 @@ export default function Workspace({ signedIn, displayName, publicAccess = false 
           projectId: active.id,
           revision: active.revision,
           runId,
-          prompt: target?.text || "Second Opinion",
+          prompt: promptToSend,
           mode,
           smartRouting,
           secondOpinion: { messageId }

@@ -38,7 +38,7 @@ export async function testArtifact(artifact:Artifact,signal:AbortSignal):Promise
     const abort=()=>{cleanup();reject(new DOMException('Stopped','AbortError'));};
     const receive=(event:MessageEvent)=>{
       const data=event.data;
-      if(event.source!==frame.contentWindow||event.origin!=='null'||data?.type!=='convoke-runtime'||data.token!==token||!Array.isArray(data.issues))return;
+      if(event.source!==frame.contentWindow||(event.origin!=='null'&&event.origin!==''&&event.origin!==location.origin)||data?.type!=='convoke-runtime'||data.token!==token||!Array.isArray(data.issues))return;
       cleanup();resolve({issues:data.issues.slice(0,8).map((x:unknown)=>String(x).slice(0,1600)),output:typeof data.output==='string'?data.output.slice(0,12000):undefined,testsPassed:Number(data.testsPassed)||0});
     };
     timer=setTimeout(()=>{cleanup();resolve({issues:['The browser check did not finish within its time limit.']});},artifact.python?55000:7000);

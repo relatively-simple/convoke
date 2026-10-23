@@ -51,7 +51,7 @@ export async function providerAttempt(provider: Provider, key: string, model: st
   } : {
     model, messages: normalizedMessages(messages), stream: false,
     ...(provider === "groq"
-      ? { response_format: { type: "json_object" }, max_completion_tokens: model.startsWith("qwen/") ? 1000 : 4000, ...(model.startsWith("openai/") ? { reasoning_effort: "low" } : {}) }
+      ? { response_format: { type: "json_object" }, max_completion_tokens: (task === "clarify" || task === "summary") ? 1000 : 4000, ...(model.startsWith("openai/") ? { reasoning_effort: "low" } : {}) }
       : { max_tokens: 4096, ...(model.startsWith("openai/") ? { reasoning_effort: "low" } : {}) }),
   };
   let response: Response;

@@ -12,7 +12,7 @@ import { createProviderRouter } from "@/lib/provider-router";
 import { env } from "cloudflare:workers";
 import { owner, db, json, readBody, errorResponse, HttpError, getProject, commitProject, checkCapacity, capabilities } from "@/lib/server";
 export const dynamic = "force-dynamic";
-const schema = z.object({ compare:z.boolean().optional(), boardroom:z.boolean().optional(), factCheck:z.object({ messageId:z.string().uuid() }).optional(), secondOpinion:z.object({ messageId:z.string().uuid() }).optional(), runtimeVersionId:z.string().uuid().optional(), projectId:z.string().uuid(), revision:z.number().int().nonnegative(), runId:z.string().uuid(), prompt:z.string().trim().min(1).max(4000), mode:modeSchema, live:z.literal(true).optional(), thorough:z.boolean().default(true), smartRouting:z.boolean().default(true), clarificationId:z.string().uuid().optional(), answers:z.array(z.string().trim().min(1).max(800)).min(1).max(12).optional() });
+const schema = z.object({ compare:z.boolean().optional(), boardroom:z.boolean().optional(), factCheck:z.object({ messageId:z.string().uuid() }).optional(), secondOpinion:z.object({ messageId:z.string().uuid() }).optional(), runtimeVersionId:z.string().uuid().optional(), projectId:z.string().uuid(), revision:z.number().int().nonnegative(), runId:z.string().uuid(), prompt:z.string().trim().min(1).max(16000), mode:modeSchema, live:z.literal(true).optional(), thorough:z.boolean().default(true), smartRouting:z.boolean().default(true), clarificationId:z.string().uuid().optional(), answers:z.array(z.string().trim().min(1).max(800)).min(1).max(12).optional() });
 export async function POST(request: Request) {
   if (request.headers.get("accept")?.includes("application/x-ndjson")) return generationStream(request, execute);
   return execute(request);
@@ -62,14 +62,17 @@ async function execute(request: Request, progress: ProgressSink = () => {}) {
     if (body.factCheck) {
       const target = project.messages.find(m => m.id === body.factCheck!.messageId);
       if (!target || target.role !== "assistant") throw new HttpError(404, "The message to fact-check could not be found.");
-      const keys = { gemini: env.GEMINI_API_KEY, groq: env.GROQ_API_KEY, nvidia: env.NVIDIA_API_KEY };
+      const keys = { groq: env.GROQ_API_KEY, gemini: env.GEMINI_API_KEY, nvidia: env.NVIDIA_API_KEY };
       const deadline = AbortSignal.any([request.signal, AbortSignal.timeout(GENERATION_TIMEOUT_MS)]);
       const reserve = async () => {
         const running = await db().prepare("SELECT id FROM projects WHERE id = ? AND owner = ? AND locked_by = ? AND locked_until > ?").bind(project!.id, userId, runId, Date.now()).first();
         if (!running || request.signal.aborted) throw new HttpError(409, "This fact-check was stopped.");
       };
       const router = createProviderRouter(keys, deadline, reserve, progress, { smartRouting: body.smartRouting });
-      const report = await verifyAnswer(effectivePrompt || target.text, target.text, target.id, request.signal, reserve, router, progress);
+      const targetIndex = project.messages.findIndex(m => m.id === target.id);
+      const priorUser = project.messages.slice(0, targetIndex >= 0 ? targetIndex : undefined).reverse().find(m => m.role === "user");
+      const questionText = priorUser?.text || project.confirmedTask?.prompt || body.prompt;
+      const report = await verifyAnswer(questionText, target.text, target.id, request.signal, reserve, router, progress);
       target.factCheck = report;
       await commitProject(project, userId, body.revision, runId, { model: "Fact-Check Verifier", tokens: 500 });
       return json({ project });
@@ -77,12 +80,15 @@ async function execute(request: Request, progress: ProgressSink = () => {}) {
     if (body.secondOpinion) {
       const target = project.messages.find(m => m.id === body.secondOpinion!.messageId);
       if (!target || target.role !== "assistant") throw new HttpError(404, "The message to review could not be found.");
-      const keys = { gemini: env.GEMINI_API_KEY, groq: env.GROQ_API_KEY, nvidia: env.NVIDIA_API_KEY };
+      const keys = { groq: env.GROQ_API_KEY, gemini: env.GEMINI_API_KEY, nvidia: env.NVIDIA_API_KEY };
       const reserve = async () => {
         const running = await db().prepare("SELECT id FROM projects WHERE id = ? AND owner = ? AND locked_by = ? AND locked_until > ?").bind(project!.id, userId, runId, Date.now()).first();
         if (!running || request.signal.aborted) throw new HttpError(409, "This second opinion was stopped.");
       };
-      const report = await getSecondOpinion(effectivePrompt || target.text, target.text, target.id, target.model || "", request.signal, reserve, progress, keys);
+      const targetIndex = project.messages.findIndex(m => m.id === target.id);
+      const priorUser = project.messages.slice(0, targetIndex >= 0 ? targetIndex : undefined).reverse().find(m => m.role === "user");
+      const questionText = priorUser?.text || project.confirmedTask?.prompt || body.prompt;
+      const report = await getSecondOpinion(questionText, target.text, target.id, target.model || "", request.signal, reserve, progress, keys);
       target.secondOpinion = report;
       await commitProject(project, userId, body.revision, runId, { model: `Second Opinion · ${report.reviewerModel}`, tokens: report.tokens });
       return json({ project });
@@ -93,7 +99,7 @@ async function execute(request: Request, progress: ProgressSink = () => {}) {
         const running = await db().prepare("SELECT id FROM projects WHERE id = ? AND owner = ? AND locked_by = ? AND locked_until > ?").bind(project!.id, userId, runId, Date.now()).first();
         if (!running || request.signal.aborted) throw new HttpError(409, "This boardroom deliberation was stopped.");
       };
-      const keys = { gemini: env.GEMINI_API_KEY, groq: env.GROQ_API_KEY, nvidia: env.NVIDIA_API_KEY };
+      const keys = { groq: env.GROQ_API_KEY, gemini: env.GEMINI_API_KEY, nvidia: env.NVIDIA_API_KEY };
       const session = await runBoardroomSession(project, effectivePrompt, request.signal, reserve, progress, { keys });
       project.boardroom = session;
       const time = new Date().toISOString();
