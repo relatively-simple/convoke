@@ -140,6 +140,160 @@
   padding: 8px 10px;
 }
 
+/* --------------------------------------------------------------------------
+   PromptRelay (TaskShare) Marketplace Promo Card
+   -------------------------------------------------------------------------- */
+.marketplace-promo-card {
+  display: block;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%), var(--fill-1);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  color: var(--label);
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s ease,
+              background 0.22s ease;
+  will-change: transform, box-shadow;
+}
+
+/* Subtle animated light sweep on hover */
+.marketplace-promo-card::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.09) 50%,
+    transparent 100%
+  );
+  transform: rotate(25deg);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.marketplace-promo-card:hover {
+  transform: translateY(-2px) scale(1.012);
+  border-color: rgba(16, 185, 129, 0.65);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.14) 0%, rgba(99, 102, 241, 0.12) 100%), var(--fill-2);
+  box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.22),
+              0 2px 8px -2px rgba(99, 102, 241, 0.16);
+}
+
+.marketplace-promo-card:hover::after {
+  opacity: 1;
+  animation: marketplace-sheen 1.2s ease-in-out infinite;
+}
+
+@keyframes marketplace-sheen {
+  0% {
+    left: -60%;
+  }
+  100% {
+    left: 140%;
+  }
+}
+
+.marketplace-promo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.marketplace-promo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+}
+
+.marketplace-promo-card:hover .marketplace-promo-badge {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #34d399;
+}
+
+.marketplace-badge-sparkle {
+  color: #10b981;
+  transition: transform 0.25s ease;
+}
+
+.marketplace-promo-card:hover .marketplace-badge-sparkle {
+  transform: rotate(20deg) scale(1.15);
+}
+
+.marketplace-arrow-icon {
+  color: var(--label-tertiary);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+}
+
+.marketplace-promo-card:hover .marketplace-arrow-icon {
+  transform: translate(2px, -2px);
+  color: #10b981;
+}
+
+.marketplace-promo-title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--label);
+  line-height: 1.3;
+}
+
+.marketplace-promo-sub {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--label-tertiary);
+}
+
+.marketplace-promo-desc {
+  font-size: 0.71875rem;
+  color: var(--label-secondary);
+  line-height: 1.45;
+  margin: 4px 0 8px;
+}
+
+.marketplace-promo-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #10b981;
+  transition: color 0.2s ease;
+}
+
+.marketplace-chevron-anim {
+  display: inline-block;
+  font-size: 0.8125rem;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.marketplace-promo-card:hover .marketplace-chevron-anim {
+  transform: translateX(4px);
+}
+
 .workspace-note {
   background: var(--fill-1);
   border: 1px solid var(--separator);

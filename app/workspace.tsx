@@ -11,6 +11,7 @@ import {
   FileText,
   ChevronRight,
   Trash2,
+  ArrowUpRight,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -42,6 +43,11 @@ import { Composer } from "./workspace/conversation/Composer";
 import { WelcomeView } from "./workspace/conversation/WelcomeView";
 import { CanvasPanel } from "./workspace/canvas/CanvasPanel";
 import { ClarificationDialog } from "./workspace/dialogs/ClarificationDialog";
+
+const PROMPT_RELAY_URL =
+  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_PROMPT_RELAY_URL)
+    ? process.env.NEXT_PUBLIC_PROMPT_RELAY_URL
+    : "http://localhost:3000";
 import { SettingsSheet } from "./workspace/dialogs/SettingsSheet";
 import { AccountDialog } from "./workspace/dialogs/AccountDialog";
 import { CommandPalette } from "./workspace/dialogs/CommandPalette";
@@ -309,17 +315,31 @@ export default function Workspace({
         </SidebarContent>
 
         <SidebarFooter>
-          <div className="workspace-note">
-            <span className="tiny-orbit">
-              <Orbit size={16} />
-            </span>
-            <strong>A place for your ideas</strong>
-            <p>
-              Pick up where you left off.<br />
-              Every saved version stays with you.<br />
-              <span style={{ fontSize: "10px", color: "var(--label-tertiary)", opacity: 0.7 }}>v3.0</span>
+          <a
+            href={PROMPT_RELAY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="marketplace-promo-card"
+            title="Open PromptRelay (TaskShare) AI Marketplace"
+          >
+            <div className="marketplace-promo-header">
+              <span className="marketplace-promo-badge">
+                <Sparkles size={11} className="marketplace-badge-sparkle" />
+                <span>AI Marketplace</span>
+              </span>
+              <ArrowUpRight size={13} className="marketplace-arrow-icon" />
+            </div>
+            <strong className="marketplace-promo-title">
+              PromptRelay <span className="marketplace-promo-sub">TaskShare</span>
+            </strong>
+            <p className="marketplace-promo-desc">
+              Run Claude 3.7, o3 & DeepSeek R1 on demand or monetize your idle AI quota.
             </p>
-          </div>
+            <div className="marketplace-promo-footer">
+              <span className="marketplace-cta-text">Explore Marketplace</span>
+              <span className="marketplace-chevron-anim">→</span>
+            </div>
+          </a>
 
           <button
             type="button"
