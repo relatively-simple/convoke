@@ -1,6 +1,6 @@
 "use client";
 
-import { Orbit, Compass, Flame, Cpu, LineChart } from "lucide-react";
+import { Orbit, Compass, Flame, Cpu, LineChart, ArrowUpRight } from "lucide-react";
 
 interface WelcomeViewProps {
   live: boolean;
@@ -66,9 +66,12 @@ export function WelcomeView({ live, loading, onSelectStarter }: WelcomeViewProps
               className="starter-card"
               onClick={() => onSelectStarter(s.prompt, s.mode)}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Icon size={16} style={{ color: "var(--accent)" }} />
+              <div className="starter-card-header">
+                <div className="starter-card-icon-wrap">
+                  <Icon size={16} className="starter-icon" />
+                </div>
                 <strong>{s.title}</strong>
+                <ArrowUpRight size={14} className="starter-card-arrow" />
               </div>
               <span>{s.description}</span>
             </button>

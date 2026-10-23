@@ -383,78 +383,78 @@ export default function Workspace({
             <strong className="breadcrumb-title">{activeProject?.title || "A new beginning"}</strong>
           </div>
 
-          {/* Mobile View Switcher when a canvas exists */}
-          {version && (
-            <div className="mobile-view-tabs" role="tablist" aria-label="Mobile workspace view">
+          <div className="topbar-actions">
+            {activeProject && (
               <button
                 type="button"
-                role="tab"
-                aria-selected={!mobileCanvas}
-                className={`mobile-tab-btn ${!mobileCanvas ? "active" : ""}`}
-                onClick={() => setMobileCanvas(false)}
+                className="topbar-action-btn"
+                onClick={() => setBriefOpen(true)}
+                disabled={busy}
+                title="View project brief"
               >
-                <MessageSquare size={13} />
-                <span>Chat</span>
+                <FileText size={13} />
+                <span className="topbar-action-label">Project brief</span>
               </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mobileCanvas}
-                className={`mobile-tab-btn ${mobileCanvas ? "active" : ""}`}
-                onClick={() => {
-                  setMobileCanvas(true);
-                  setCanvasOverride(true);
-                }}
-              >
-                <PanelRight size={13} />
-                <span>Canvas</span>
-                <span className="mobile-canvas-indicator" />
-              </button>
-            </div>
-          )}
+            )}
 
-          <button
-            type="button"
-            className="mode-badge"
-            onClick={() => setSettingsOpen(true)}
-          >
-            {caps.live ? <Sparkles size={13} /> : <Settings2 size={13} />}
-            <span className="mode-badge-label">{caps.live ? "AI mesh ready" : loading ? "Connecting…" : "AI status"}</span>
-          </button>
+            {activeProject && (
+              <button
+                type="button"
+                className="topbar-action-btn topbar-action-delete"
+                onClick={() => setConfirmDeleteId(activeProject.id)}
+                disabled={busy}
+                title="Delete this chat thread"
+              >
+                <Trash2 size={13} />
+                <span className="topbar-action-label">Delete</span>
+              </button>
+            )}
+
+            {/* Mobile View Switcher when a canvas exists */}
+            {version && (
+              <div className="mobile-view-tabs" role="tablist" aria-label="Mobile workspace view">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={!mobileCanvas}
+                  className={`mobile-tab-btn ${!mobileCanvas ? "active" : ""}`}
+                  onClick={() => setMobileCanvas(false)}
+                >
+                  <MessageSquare size={13} />
+                  <span>Chat</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mobileCanvas}
+                  className={`mobile-tab-btn ${mobileCanvas ? "active" : ""}`}
+                  onClick={() => {
+                    setMobileCanvas(true);
+                    setCanvasOverride(true);
+                  }}
+                >
+                  <PanelRight size={13} />
+                  <span>Canvas</span>
+                  <span className="mobile-canvas-indicator" />
+                </button>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="mode-badge"
+              onClick={() => setSettingsOpen(true)}
+              title="Open AI status and configuration"
+            >
+              {caps.live ? <Sparkles size={13} className="mode-badge-sparkle" /> : <Settings2 size={13} />}
+              <span className="mode-badge-label">{caps.live ? "AI mesh ready" : loading ? "Connecting…" : "AI status"}</span>
+            </button>
+          </div>
         </header>
 
         <div className={`work-area ${mobileCanvas && showCanvas ? "show-canvas" : ""} ${!showCanvas ? "canvas-closed" : ""}`}>
           {/* Conversation Column */}
           <section className="conversation" aria-label="Conversation">
-            <div className="conversation-toolbar">
-              <span>
-                <MessageSquare size={14} /> Conversation
-              </span>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                {activeProject && (
-                  <button
-                    type="button"
-                    onClick={() => setBriefOpen(true)}
-                    disabled={busy}
-                  >
-                    <FileText size={14} /> Project brief
-                  </button>
-                )}
-                {activeProject && (
-                  <button
-                    type="button"
-                    className="delete-thread-btn"
-                    onClick={() => setConfirmDeleteId(activeProject.id)}
-                    disabled={busy}
-                    title="Delete this chat thread"
-                  >
-                    <Trash2 size={13} />
-                    <span>Delete chat</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
             {hasMessages ? (
               <MessageList
                 project={activeProject}
