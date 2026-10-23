@@ -99,7 +99,7 @@ export function MessageList({
                     onClick={onOpenBoardroom}
                     title="View 3-model deliberation transcript"
                   >
-                    <Users size={12} /> Boardroom deliberation
+                    <Users size={12} /> <span className="boardroom-pill-text">Boardroom deliberation</span>
                   </button>
                 )}
                 {m.cost && (

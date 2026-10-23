@@ -55,12 +55,13 @@ export function AccountDialog({
           const container = document.getElementById("google-signin-btn-container");
           if (container) {
             container.innerHTML = "";
+            const btnWidth = Math.min(320, typeof window !== "undefined" ? Math.max(220, window.innerWidth - 64) : 280);
             gsi.renderButton(container, {
               theme: "outline",
               size: "large",
               text: "signin_with",
               shape: "rectangular",
-              width: 320,
+              width: btnWidth,
             });
           }
         } catch (e) {
@@ -117,7 +118,7 @@ export function AccountDialog({
         {!user?.email ? (
           <>
             <div style={{ display: "grid", gap: "10px", margin: "6px 0" }}>
-              <div id="google-signin-btn-container" style={{ display: "flex", justifyContent: "center" }} />
+              <div id="google-signin-btn-container" style={{ display: "flex", justifyContent: "center", maxWidth: "100%", overflow: "hidden" }} />
               {!googleClientId && (
                 <button
                   type="button"

@@ -15,6 +15,7 @@ import {
   Maximize2,
   Minimize2,
   Orbit,
+  ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -37,6 +38,7 @@ interface CanvasPanelProps {
   onResumeChecks: () => Promise<void>;
   onDownload: () => void;
   onOpenSettings: () => void;
+  onBackToChat?: () => void;
 }
 
 export function CanvasPanel({
@@ -53,6 +55,7 @@ export function CanvasPanel({
   onResumeChecks,
   onDownload,
   onOpenSettings,
+  onBackToChat,
 }: CanvasPanelProps) {
   const [device, setDevice] = useState<DevicePreset>("responsive");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -85,33 +88,36 @@ export function CanvasPanel({
       }
     >
       <div className="canvas-heading">
-        <div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+          {onBackToChat && (
+            <button
+              type="button"
+              className="mobile-back-to-chat"
+              onClick={onBackToChat}
+              aria-label="Back to chat"
+            >
+              <ChevronLeft size={16} />
+              <span>Chat</span>
+            </button>
+          )}
           <span className="canvas-icon" aria-hidden="true">
             <PanelRight size={18} />
           </span>
-          <div>
-            <strong>{version ? version.title : "Your canvas"}</strong>
-            <small>
-              {version ? `v${version.number} · ${version.source === "demo" ? "Saved artifact" : version.source === "manual" ? "Edited" : "AI generated"}` : "AI-created results appear here"}
+          <div style={{ minWidth: 0, overflow: "hidden" }}>
+            <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+              {version ? version.title : "Your canvas"}
+            </strong>
+            <small style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+              {version
+                ? `v${version.number} · ${version.source === "demo" ? "Saved artifact" : version.source === "manual" ? "Edited" : "AI generated"}`
+                : "AI-created results appear here"}
             </small>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
           {canvasTab === "preview" && (
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "2px",
-                padding: "2px",
-                borderRadius: "var(--radius-xs)",
-                border: "1px solid var(--separator)",
-                backgroundColor: "var(--fill-1)",
-              }}
-              role="group"
-              aria-label="Device preview presets"
-            >
+            <div className="canvas-device-presets" role="group" aria-label="Device preview presets">
               <button
                 type="button"
                 className={`quick-pill ${device === "responsive" ? "active" : ""}`}

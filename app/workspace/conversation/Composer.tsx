@@ -167,13 +167,13 @@ export function Composer({
           <Tabs value={mode} onValueChange={(v) => onSetMode(v as Mode)}>
             <TabsList className="intent-tabs">
               <TabsTrigger value="auto" disabled={busy}>
-                <Sparkles size={14} /> Auto
+                <Sparkles size={14} /> <span className="tab-label">Auto</span>
               </TabsTrigger>
               <TabsTrigger value="explain" disabled={busy}>
-                <BookOpen size={14} /> Explain
+                <BookOpen size={14} /> <span className="tab-label">Explain</span>
               </TabsTrigger>
               <TabsTrigger value="build" disabled={busy}>
-                <Code2 size={14} /> Build
+                <Code2 size={14} /> <span className="tab-label">Build</span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -197,6 +197,8 @@ export function Composer({
               <Button
                 type="button"
                 size="icon"
+                className="stop-btn"
+                style={{ flexShrink: 0 }}
                 aria-label="Stop request"
                 onClick={onCancel}
               >
@@ -206,6 +208,8 @@ export function Composer({
               <Button
                 type="submit"
                 size="icon"
+                className="send-btn"
+                style={{ flexShrink: 0 }}
                 aria-label="Send message"
                 disabled={!text.trim() || loading || !!loadError || !live}
               >

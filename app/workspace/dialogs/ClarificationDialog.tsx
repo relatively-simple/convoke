@@ -118,15 +118,7 @@ export function ClarificationDialog({
             </label>
           </fieldset>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: "20px",
-              gap: "8px",
-            }}
-          >
+          <div className="quiz-actions">
             <Button
               type="button"
               variant="ghost"
@@ -136,7 +128,7 @@ export function ClarificationDialog({
               Back
             </Button>
 
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div className="quiz-action-group">
               <Button
                 type="button"
                 variant="outline"

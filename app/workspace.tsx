@@ -358,10 +358,40 @@ export default function Workspace({
         <header className="topbar">
           <div className="breadcrumb">
             <SidebarTrigger />
-            <span>Workspace</span>
-            <ChevronRight size={14} />
-            <strong>{activeProject?.title || "A new beginning"}</strong>
+            <span className="desktop-breadcrumb">Workspace</span>
+            <ChevronRight size={14} className="desktop-breadcrumb" />
+            <strong className="breadcrumb-title">{activeProject?.title || "A new beginning"}</strong>
           </div>
+
+          {/* Mobile View Switcher when a canvas exists */}
+          {version && (
+            <div className="mobile-view-tabs" role="tablist" aria-label="Mobile workspace view">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!mobileCanvas}
+                className={`mobile-tab-btn ${!mobileCanvas ? "active" : ""}`}
+                onClick={() => setMobileCanvas(false)}
+              >
+                <MessageSquare size={13} />
+                <span>Chat</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mobileCanvas}
+                className={`mobile-tab-btn ${mobileCanvas ? "active" : ""}`}
+                onClick={() => {
+                  setMobileCanvas(true);
+                  setCanvasOverride(true);
+                }}
+              >
+                <PanelRight size={13} />
+                <span>Canvas</span>
+                <span className="mobile-canvas-indicator" />
+              </button>
+            </div>
+          )}
 
           <button
             type="button"
@@ -369,20 +399,7 @@ export default function Workspace({
             onClick={() => setSettingsOpen(true)}
           >
             {caps.live ? <Sparkles size={13} /> : <Settings2 size={13} />}
-            {caps.live ? "AI mesh ready" : loading ? "Connecting…" : "AI status"}
-          </button>
-
-          <button
-            type="button"
-            disabled={!version}
-            className="mobile-canvas-button"
-            onClick={() => {
-              setCanvasOverride(!showCanvas);
-              setMobileCanvas(!showCanvas);
-            }}
-            aria-label="Switch between chat and canvas"
-          >
-            <PanelRight size={18} />
+            <span className="mode-badge-label">{caps.live ? "AI mesh ready" : loading ? "Connecting…" : "AI status"}</span>
           </button>
         </header>
 
@@ -492,6 +509,7 @@ export default function Workspace({
               onResumeChecks={resumeChecks}
               onDownload={handleDownload}
               onOpenSettings={() => setSettingsOpen(true)}
+              onBackToChat={() => setMobileCanvas(false)}
             />
           )}
         </div>
