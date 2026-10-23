@@ -7,6 +7,21 @@ export function normalizeMath(text: string) {
       const math = value.replace(/^(`{3,}|~{3,})(?:math|latex|tex|katex)\s*\n/i, '').replace(/\n?(`{3,}|~{3,})$/, '').trim();
       return '\n$$\n' + math.replace(/^\$\$|\$\$$/g, '').replace(/^\\{1,2}\[|\\{1,2}\]$/g, '').trim() + '\n$$\n';
     }
+    if (value.startsWith('`') && !value.startsWith('```')) {
+      const inner = value.slice(1, -1).trim();
+      const isMath = (
+        (inner.startsWith('$') && inner.endsWith('$') && inner.length > 2) ||
+        /\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega|cdot|times|div|pm|mp|leq|geq|neq|approx|equiv|sim|simeq|le|ge|ne|frac|sqrt|partial|nabla|sum|int|iint|iiint|oint|prod|coprod|lim|to|leftarrow|rightarrow|infty|in|notin|subset|subseteq|cap|cup|forall|exists|emptyset|land|lor|lnot|mathbf|mathrm|mathcal|mathbb)\b/.test(inner) ||
+        /\^\{[^{}]+\}|_\{[^{}]+\}/.test(inner) ||
+        /[a-zA-Z]_[a-zA-Z0-9]\^[a-zA-Z0-9]/.test(inner) ||
+        /[α-ωΑ-Ω]\s*[·\+\-\*/<>=]/.test(inner) ||
+        /[·≈≠≤≥]/.test(inner)
+      );
+      if (isMath) {
+        return '$' + inner.replace(/^\$|\$$/g, '').trim() + '$';
+      }
+      return value;
+    }
     if (value.startsWith('`') || value.startsWith('~~~')) return value;
     if (/^\\{1,2}\[/.test(value)) {
       const inner = value.replace(/^\\{1,2}\[/, '').replace(/\\{1,2}\]$/, '').trim();

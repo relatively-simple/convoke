@@ -12,6 +12,8 @@ assert.ok(math.includes('begin{pmatrix}'));assert.ok(math.includes('begin{cases}
 assert.ok(normalizeMath("```katex\n\\alpha + \\beta\n```").includes("$$"));
 assert.ok(normalizeMath("```latex\n\\alpha + \\beta\n```").includes("$$"));
 assert.equal(normalizeMath('`\\(code\\)`'),'`\\(code\\)`');
+assert.ok(normalizeMath('`T_i^{k+1}=T_i^k+\\alpha\\cdot dt/dx^2`').startsWith('$'));
+assert.equal(normalizeMath('`ctx.scale(1,1)`'),'`ctx.scale(1,1)`');
 const rendered=renderToStaticMarkup(createElement(Markdown,{remarkPlugins:[remarkMath],rehypePlugins:[[rehypeKatex,{trust:false,throwOnError:false}]],skipHtml:true},math+'<script>alert(1)</script>'));
 assert.match(rendered,/katex/);assert.ok(!rendered.includes('<script>'));
 const project=newProject();assert.equal(latestAnswerHasCanvas(project),false);
