@@ -1,4 +1,4 @@
-# Upload Convoke 2.0 to GitHub
+# Upload Convoke to GitHub
 
 This folder is the repository root. Upload its contents, including hidden `.gitignore`, `.npmrc`, `.openai/`, and the example configuration files. Do not put everything inside another `app` folder: the `app/` here already contains application routes.
 
@@ -7,7 +7,7 @@ For a new empty GitHub repository, open a terminal in this folder and run:
 ```sh
 git init
 git add .
-git commit -m "Release Convoke 2.0"
+git commit -m "Release Convoke"
 git branch -M main
 git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
 git push -u origin main
